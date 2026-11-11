@@ -55,6 +55,20 @@ h3.cat{margin:18px 0 8px;color:var(--amber)}
 .now{margin-bottom:10px;font-size:20px}
 .chip{display:inline-block;min-width:48px;text-align:center;margin:0 6px 6px 0;padding:6px 12px;border-radius:10px;background:var(--green);color:#fff;font-weight:700;font-size:26px}
 .slipbig{font-size:30px;color:var(--amber)}
+.board{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:700px){.board{grid-template-columns:1fr}}
+.board h2{font-size:30px;color:var(--amber)}
+.bignums{display:flex;flex-wrap:wrap;gap:12px}
+.bn{font-size:min(13vw,110px);font-weight:800;line-height:1;padding:.12em .28em;border-radius:16px;background:#222;color:var(--amber);min-width:1.5em;text-align:center}
+.bignums.ready .bn{background:var(--green);color:#fff}
+.stock{display:flex;flex-wrap:wrap;gap:8px}
+.chipbtn{padding:10px 14px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;cursor:pointer}
+.chipbtn.off{background:var(--red);border-color:var(--red);color:#fff}
+.dish.so{opacity:.35}.dish.so b{text-decoration:line-through}.dish.so span{color:var(--red)}.dish:disabled{cursor:not-allowed}
+.cancel{width:100%;margin-top:8px;padding:10px;font:inherit;border-radius:10px;border:1px solid var(--red);background:none;color:var(--red);cursor:pointer}
+#lock{max-width:320px;margin:30px auto;text-align:center}
+#lock input{width:100%;padding:14px;font:inherit;font-size:24px;text-align:center;letter-spacing:.4em;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink);margin:10px 0}
+#pinmsg{color:var(--red);min-height:1.4em;margin-top:8px}
 #status{position:fixed;bottom:8px;right:10px;font-size:13px;color:var(--mute)}
 </style>
 </head>
@@ -63,6 +77,7 @@ h3.cat{margin:18px 0 8px;color:var(--amber)}
 <nav>
   <button data-v="order">Take orders</button>
   <button data-v="kitchen">Kitchen <span id="kcount"></span></button>
+  <button data-v="display">Display</button>
   <button data-v="summary">Today</button>
 </nav>
 
@@ -88,9 +103,20 @@ h3.cat{margin:18px 0 8px;color:var(--amber)}
 <main id="kitchen">
   <h2>Orders to prepare <button class="soundbtn" id="snd">Turn on sound</button></h2>
   <div class="cols" id="queue"></div>
+  <h2 style="margin-top:26px">Out of stock? Tap a dish</h2>
+  <div class="stock" id="stock"></div>
+</main>
+
+<main id="display">
+  <div class="board">
+    <div><h2>Preparing</h2><div class="bignums" id="d-prep"></div></div>
+    <div><h2>Ready — please collect</h2><div class="bignums ready" id="d-ready"></div></div>
+  </div>
 </main>
 
 <main id="summary">
+  <div id="lock"><h2>Owner PIN</h2><input id="pin" type="password" inputmode="numeric" maxlength="8" autocomplete="off"><button class="big" id="unlock">Unlock</button><div id="pinmsg"></div></div>
+  <div id="sumbody" hidden>
   <h2>Today's sales</h2>
   <div class="stats">
     <div class="stat">Orders<b id="s-orders">0</b></div>
@@ -99,6 +125,7 @@ h3.cat{margin:18px 0 8px;color:var(--amber)}
   </div>
   <table><thead><tr><th>Dish</th><th class="n">Sold</th><th class="n">Amount</th></tr></thead><tbody id="s-rows"></tbody></table>
   <button class="link" id="reset">Delete all orders (reset demo)</button>
+  </div>
 </main>
 
 <div id="status">connecting…</div>
@@ -107,6 +134,7 @@ h3.cat{margin:18px 0 8px;color:var(--amber)}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
 // ====== EDIT YOUR MENU HERE (price in Rands) ======
+const PIN = "1234"; // owner PIN for the Today tab: change it here
 const MENU = [
   {id:"chi0", cat:"Chips", name:"Small Chips", price:20},
   {id:"chi1", cat:"Chips", name:"Medium Chips", price:25},
@@ -146,16 +174,17 @@ const db = firebase.database();
 const $ = id => document.getElementById(id);
 const R = n => "R" + n;
 const money = n => R(n.toLocaleString());
-let cart = {}, orders = {}, loaded = false, lastNew = 0;
+let cart = {}, orders = {}, loaded = false, lastNew = 0, unlocked = false;
 
 // ----- tabs -----
 function show(v){
+  if(v !== "summary"){ unlocked = false; applyLock(); }
   document.querySelectorAll("main").forEach(m => m.classList.toggle("on", m.id === v));
   document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
   location.hash = v;
 }
 document.querySelectorAll("nav button").forEach(b => b.onclick = () => show(b.dataset.v));
-show(["order","kitchen","summary"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "order");
+show(["order","kitchen","display","summary"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "order");
 
 // ----- menu + cart -----
 const info = k => { const [id, br] = k.split("|"); const d = MENU.find(m => m.id === id); return {d, name: d.name + (br ? " (" + br + ")" : "")}; };
@@ -190,7 +219,7 @@ $("cart").onclick = e => {
   if(cart[id] <= 0) delete cart[id]; drawCart();
 };
 let slip = null;
-const usedSlips = () => new Set(Object.values(orders).filter(o => o.status !== "served" && o.slip).map(o => o.slip));
+const usedSlips = () => new Set(Object.values(orders).filter(o => o.status !== "served" && o.status !== "cancelled" && o.slip).map(o => o.slip));
 function drawSlips(){
   const u = usedSlips(); if(slip && u.has(slip)) slip = null;
   $("slips").innerHTML = Array.from({length:30}, (_, i) => i + 1).map(n =>
@@ -219,6 +248,32 @@ $("send").onclick = () => {
     .catch(err => { alert("Could not send: " + err.message); drawCart(); });
 };
 
+// ----- PIN lock -----
+function applyLock(){
+  $("lock").hidden = unlocked; $("sumbody").hidden = !unlocked; $("pin").value = ""; $("pinmsg").textContent = "";
+}
+$("unlock").onclick = () => {
+  if($("pin").value === PIN){ unlocked = true; applyLock(); }
+  else { $("pinmsg").textContent = "Wrong PIN"; $("pin").value = ""; }
+};
+$("pin").onkeydown = e => { if(e.key === "Enter") $("unlock").click(); };
+
+// ----- sold out -----
+let soldout = {};
+db.ref("soldout").on("value", sn => { soldout = sn.val() || {}; drawSold(); });
+function drawSold(){
+  document.querySelectorAll(".dish").forEach(b => {
+    const so = !!soldout[b.dataset.id]; b.disabled = so; b.classList.toggle("so", so);
+    b.querySelector("span").textContent = so ? "SOLD OUT" : R(MENU.find(m => m.id === b.dataset.id).price);
+  });
+  $("stock").innerHTML = MENU.map(d =>
+    `<button class="chipbtn ${soldout[d.id] ? "off" : ""}" data-id="${d.id}">${d.name}${soldout[d.id] ? " — SOLD OUT" : ""}</button>`).join("");
+}
+$("stock").onclick = e => {
+  const b = e.target.closest("button"); if(!b) return;
+  db.ref("soldout/" + b.dataset.id).set(soldout[b.dataset.id] ? null : true);
+};
+
 // ----- live data -----
 db.ref("orders").on("value", snap => {
   orders = snap.val() || {};
@@ -226,11 +281,16 @@ db.ref("orders").on("value", snap => {
   const fresh = list.filter(o => o.status === "new").length;
   if(loaded && fresh > lastNew) beep();
   lastNew = fresh; loaded = true;
-  drawSlips(); drawKitchen(list); drawReady(list); drawSummary(list);
+  drawSlips(); drawDisplay(list); drawKitchen(list); drawReady(list); drawSummary(list);
   $("status").textContent = "● live";
 }, err => { $("status").textContent = "offline: " + err.message; });
 
 const tag = o => o.slip ? `Slip <span class="slipbig">${o.slip}</span>` : "Order #" + o.num;
+function drawDisplay(list){
+  const f = st => list.filter(o => o.status === st).sort((a, b) => a.createdAt - b.createdAt)
+    .map(o => `<span class="bn">${o.slip || o.num}</span>`).join("") || `<span class="empty">—</span>`;
+  $("d-prep").innerHTML = f("new"); $("d-ready").innerHTML = f("ready");
+}
 const time = ts => new Date(ts).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
 const itemsHtml = o => "<ul>" + (o.items || []).map(i => `<li>${i.qty} × ${i.name}</li>`).join("") + "</ul>";
 
@@ -239,7 +299,7 @@ function drawKitchen(list){
   $("kcount").textContent = q.length ? "(" + q.length + ")" : "";
   $("queue").innerHTML = q.length ? q.map(o =>
     `<div class="ticket"><h3><span>${tag(o)}</span><span class="t">${time(o.createdAt)}</span></h3>
-     ${itemsHtml(o)}<button class="done" data-k="${o.k}" data-s="ready">Done — ready to serve</button></div>`).join("")
+     ${itemsHtml(o)}<button class="done" data-k="${o.k}" data-s="ready">Done — ready to serve</button><button class="cancel" data-k="${o.k}">Cancel order</button></div>`).join("")
     : `<div class="empty">No orders waiting.</div>`;
 }
 function drawReady(list){
@@ -247,9 +307,13 @@ function drawReady(list){
   $("now").innerHTML = r.length ? "Now serving: " + r.map(o => `<span class="chip">${o.slip || o.num}</span>`).join("") : "";
   $("ready").innerHTML = r.length ? r.map(o =>
     `<div class="ticket ready" style="margin-bottom:10px"><h3><span>${tag(o)}</span><span class="t">${money(o.total)}</span></h3>
-     ${itemsHtml(o)}<button class="done" data-k="${o.k}" data-s="served">Served</button></div>`).join("")
+     ${itemsHtml(o)}<button class="done" data-k="${o.k}" data-s="served">Served</button><button class="cancel" data-k="${o.k}">Cancel order</button></div>`).join("")
     : `<div class="empty">Nothing ready yet.</div>`;
 }
+document.addEventListener("click", e => {
+  const c = e.target.closest(".cancel");
+  if(c && confirm("Cancel this order?")) db.ref("orders/" + c.dataset.k + "/status").set("cancelled");
+});
 document.addEventListener("click", e => {
   const b = e.target.closest(".done"); if(!b) return;
   b.disabled = true;
@@ -258,7 +322,7 @@ document.addEventListener("click", e => {
 
 function drawSummary(list){
   const start = new Date(); start.setHours(0,0,0,0);
-  const t = list.filter(o => o.createdAt >= start.getTime());
+  const t = list.filter(o => o.createdAt >= start.getTime() && o.status !== "cancelled");
   const by = {};
   t.forEach(o => (o.items || []).forEach(i => {
     by[i.name] = by[i.name] || {q:0, a:0};
