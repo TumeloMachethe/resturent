@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Restaurant Orders</title>
+<style>
+:root{--bg:#f6f3ee;--ink:#1d2a24;--card:#fff;--line:#d9d3c7;--green:#1f6b4f;--amber:#c9821a;--red:#b23a2e;--mute:#6b746e}
+*{box-sizing:border-box}
+body{margin:0;font:17px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}
+nav{display:flex;gap:8px;padding:10px;background:var(--ink)}
+nav button{flex:1;padding:14px;font:inherit;font-weight:600;border:0;border-radius:10px;background:#2f3d36;color:#fff;cursor:pointer}
+nav button.on{background:var(--amber)}
+main{display:none;padding:14px;max-width:1100px;margin:auto}
+main.on{display:block}
+h2{margin:6px 0 12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.dish{padding:18px 10px;border:2px solid var(--line);border-radius:12px;background:var(--card);font:inherit;cursor:pointer;text-align:center}
+.dish:active{background:#e8efe9}
+.dish b{display:block}
+.dish span{color:var(--mute)}
+.order-layout{display:grid;grid-template-columns:2fr 1fr;gap:14px}
+@media(max-width:760px){.order-layout{grid-template-columns:1fr}}
+.panel{background:var(--card);border:2px solid var(--line);border-radius:12px;padding:12px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)}
+.qty button{width:36px;height:36px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:20px;cursor:pointer}
+.total{font-size:24px;font-weight:700;margin:10px 0}
+.big{width:100%;padding:16px;font:inherit;font-weight:700;border:0;border-radius:10px;background:var(--green);color:#fff;cursor:pointer}
+.big:disabled{background:#a9b5ae}
+.ticket{background:var(--card);border:3px solid var(--amber);border-radius:12px;padding:12px}
+.ticket.ready{border-color:var(--green)}
+.ticket h3{margin:0 0 6px;display:flex;justify-content:space-between}
+.ticket .t{color:var(--mute);font-size:14px}
+.ticket li{font-size:20px}
+.ticket ul{padding-left:22px;margin:6px 0 10px}
+.done{width:100%;padding:14px;font:inherit;font-weight:700;border:0;border-radius:10px;background:var(--green);color:#fff;cursor:pointer}
+.cols{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.empty{color:var(--mute);padding:20px 0}
+table{width:100%;border-collapse:collapse;background:var(--card)}
+th,td{padding:10px;border-bottom:1px solid var(--line);text-align:left}
+td.n,th.n{text-align:right}
+.stats{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.stat{flex:1;min-width:150px;background:var(--card);border:2px solid var(--line);border-radius:12px;padding:12px}
+.stat b{display:block;font-size:28px}
+.link{background:none;border:0;color:var(--red);text-decoration:underline;cursor:pointer;font:inherit;margin-top:18px}
+#status{position:fixed;bottom:8px;right:10px;font-size:13px;color:var(--mute)}
+</style>
+</head>
+<body>
+<nav>
+  <button data-v="order">Take orders</button>
+  <button data-v="kitchen">Kitchen <span id="kcount"></span></button>
+  <button data-v="summary">Today</button>
+</nav>
+
+<main id="order">
+  <div class="order-layout">
+    <div><h2>Menu</h2><div class="grid" id="menu"></div></div>
+    <div>
+      <div class="panel">
+        <h2>New order</h2>
+        <div id="cart"></div>
+        <div class="total">Total: <span id="ctotal">R0</span></div>
+        <button class="big" id="send" disabled>Send to kitchen</button>
+      </div>
+      <h2 style="margin-top:18px">Ready to serve</h2>
+      <div id="ready"></div>
+    </div>
+  </div>
+</main>
+
+<main id="kitchen">
+  <h2>Orders to prepare</h2>
+  <div class="cols" id="queue"></div>
+</main>
+
+<main id="summary">
+  <h2>Today's sales</h2>
+  <div class="stats">
+    <div class="stat">Orders<b id="s-orders">0</b></div>
+    <div class="stat">Money taken<b id="s-money">R0</b></div>
+    <div class="stat">Still in kitchen<b id="s-open">0</b></div>
+  </div>
+  <table><thead><tr><th>Dish</th><th class="n">Sold</th><th class="n">Amount</th></tr></thead><tbody id="s-rows"></tbody></table>
+  <button class="link" id="reset">Delete all orders (reset demo)</button>
+</main>
+
+<div id="status">connecting…</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+// ====== EDIT YOUR MENU HERE (price in Rands) ======
+const MENU = [
+  {id:"quarter", name:"Quarter Chicken", price:45},
+  {id:"half", name:"Half Chicken", price:80},
+  {id:"whole", name:"Whole Chicken", price:150},
+  {id:"chips", name:"Chips", price:25},
+  {id:"burger", name:"Burger", price:55},
+  {id:"wrap", name:"Chicken Wrap", price:50},
+  {id:"salad", name:"Side Salad", price:20},
+  {id:"drink", name:"Cold Drink", price:15}
+];
+// ==================================================
+
+firebase.initializeApp({
+  apiKey: "AIzaSyAw3R0axrko_vrLZRKMPCioI62ZtuP-Xow",
+  authDomain: "restaurant-order-a7eaf.firebaseapp.com",
+  databaseURL: "https://restaurant-order-a7eaf-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "restaurant-order-a7eaf",
+  storageBucket: "restaurant-order-a7eaf.firebasestorage.app",
+  messagingSenderId: "533772991024",
+  appId: "1:533772991024:web:d63c5d000d9851d0088bf5"
+});
+const db = firebase.database();
+const $ = id => document.getElementById(id);
+const R = n => "R" + n;
+const money = n => R(n.toLocaleString());
+let cart = {}, orders = {}, loaded = false, lastNew = 0;
+
+// ----- tabs -----
+function show(v){
+  document.querySelectorAll("main").forEach(m => m.classList.toggle("on", m.id === v));
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
+  location.hash = v;
+}
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => show(b.dataset.v));
+show(["order","kitchen","summary"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "order");
+
+// ----- menu + cart -----
+$("menu").innerHTML = MENU.map(d =>
+  `<button class="dish" data-id="${d.id}"><b>${d.name}</b><span>${R(d.price)}</span></button>`).join("");
+$("menu").onclick = e => {
+  const b = e.target.closest(".dish"); if(!b) return;
+  cart[b.dataset.id] = (cart[b.dataset.id] || 0) + 1; drawCart();
+};
+function drawCart(){
+  const ids = Object.keys(cart);
+  $("cart").innerHTML = ids.length ? ids.map(id => {
+    const d = MENU.find(m => m.id === id);
+    return `<div class="row"><span>${d.name}</span><span class="qty">
+      <button data-id="${id}" data-d="-1">−</button> <b>${cart[id]}</b> <button data-id="${id}" data-d="1">+</button></span></div>`;
+  }).join("") : `<div class="empty">Tap a dish to add it.</div>`;
+  const total = ids.reduce((s,id) => s + cart[id] * MENU.find(m => m.id === id).price, 0);
+  $("ctotal").textContent = money(total);
+  $("send").disabled = !ids.length;
+}
+$("cart").onclick = e => {
+  const b = e.target.closest("button"); if(!b) return;
+  const id = b.dataset.id; cart[id] += +b.dataset.d;
+  if(cart[id] <= 0) delete cart[id]; drawCart();
+};
+drawCart();
+
+// ----- send order -----
+const today = () => new Date().toLocaleDateString("en-CA");
+$("send").onclick = () => {
+  const items = Object.keys(cart).map(id => {
+    const d = MENU.find(m => m.id === id);
+    return {id, name:d.name, price:d.price, qty:cart[id]};
+  });
+  const total = items.reduce((s,i) => s + i.price * i.qty, 0);
+  $("send").disabled = true;
+  db.ref("counter/" + today()).transaction(n => (n || 0) + 1).then(r => {
+    return db.ref("orders").push({
+      num: r.snapshot.val(), items, total, status: "new",
+      createdAt: firebase.database.ServerValue.TIMESTAMP
+    });
+  }).then(() => { cart = {}; drawCart(); })
+    .catch(err => { alert("Could not send: " + err.message); drawCart(); });
+};
+
+// ----- live data -----
+db.ref("orders").on("value", snap => {
+  orders = snap.val() || {};
+  const list = Object.entries(orders).map(([k,o]) => ({k,...o}));
+  const fresh = list.filter(o => o.status === "new").length;
+  if(loaded && fresh > lastNew) beep();
+  lastNew = fresh; loaded = true;
+  drawKitchen(list); drawReady(list); drawSummary(list);
+  $("status").textContent = "● live";
+}, err => { $("status").textContent = "offline: " + err.message; });
+
+const time = ts => new Date(ts).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+const itemsHtml = o => "<ul>" + (o.items || []).map(i => `<li>${i.qty} × ${i.name}</li>`).join("") + "</ul>";
+
+function drawKitchen(list){
+  const q = list.filter(o => o.status === "new").sort((a,b) => a.createdAt - b.createdAt);
+  $("kcount").textContent = q.length ? "(" + q.length + ")" : "";
+  $("queue").innerHTML = q.length ? q.map(o =>
+    `<div class="ticket"><h3><span>Order #${o.num}</span><span class="t">${time(o.createdAt)}</span></h3>
+     ${itemsHtml(o)}<button class="done" data-k="${o.k}" data-s="ready">Done — ready to serve</button></div>`).join("")
+    : `<div class="empty">No orders waiting.</div>`;
+}
+function drawReady(list){
+  const r = list.filter(o => o.status === "ready").sort((a,b) => a.createdAt - b.createdAt);
+  $("ready").innerHTML = r.length ? r.map(o =>
+    `<div class="ticket ready" style="margin-bottom:10px"><h3><span>Order #${o.num}</span><span class="t">${money(o.total)}</span></h3>
+     ${itemsHtml(o)}<button class="done" data-k="${o.k}" data-s="served">Served</button></div>`).join("")
+    : `<div class="empty">Nothing ready yet.</div>`;
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest(".done"); if(!b) return;
+  b.disabled = true;
+  db.ref("orders/" + b.dataset.k + "/status").set(b.dataset.s);
+});
+
+function drawSummary(list){
+  const start = new Date(); start.setHours(0,0,0,0);
+  const t = list.filter(o => o.createdAt >= start.getTime());
+  const by = {};
+  t.forEach(o => (o.items || []).forEach(i => {
+    by[i.name] = by[i.name] || {q:0, a:0};
+    by[i.name].q += i.qty; by[i.name].a += i.qty * i.price;
+  }));
+  $("s-orders").textContent = t.length;
+  $("s-money").textContent = money(t.reduce((s,o) => s + o.total, 0));
+  $("s-open").textContent = t.filter(o => o.status === "new").length;
+  const rows = Object.entries(by).sort((a,b) => b[1].q - a[1].q);
+  $("s-rows").innerHTML = rows.length ? rows.map(([n,v]) =>
+    `<tr><td>${n}</td><td class="n">${v.q}</td><td class="n">${money(v.a)}</td></tr>`).join("")
+    : `<tr><td colspan="3" class="empty">No sales yet today.</td></tr>`;
+}
+
+$("reset").onclick = () => {
+  if(confirm("Delete ALL orders? Use this only to clear demo data.")){
+    db.ref("orders").remove(); db.ref("counter").remove();
+  }
+};
+
+// ----- kitchen beep -----
+let ctx;
+function beep(){
+  try{
+    ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination); o.frequency.value = 880; g.gain.value = .2;
+    o.start(); o.stop(ctx.currentTime + .25);
+  }catch(e){}
+}
+document.addEventListener("click", () => { try{ ctx = ctx || new (window.AudioContext || window.webkitAudioContext)(); ctx.resume(); }catch(e){} }, {once:true});
+</script>
+</body>
+</html>
