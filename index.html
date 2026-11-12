@@ -216,7 +216,9 @@ document.querySelectorAll("nav button").forEach(b => b.onclick = () => show(b.da
 show(["order","kitchen","online","display","summary"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "order");
 
 // ----- menu + cart -----
-const info = k => { const [id, br] = k.split("|"); const d = MENU.find(m => m.id === id); return {d, name: d.name + (br ? " (" + br + ")" : "")}; };
+const KITCHEN_PREFIX = {Croissants:"Croissant", Toasties:"Toastie", Savoury:"Savoury"};
+const kname = d => { const p = KITCHEN_PREFIX[d.cat]; return p && !d.name.toLowerCase().includes(p.toLowerCase()) ? p + ", " + d.name : d.name; };
+const info = k => { const [id, br] = k.split("|"); const d = MENU.find(m => m.id === id); return {d, name: kname(d) + (br ? " (" + br + ")" : "")}; };
 let bread = "Brown";
 $("menu").innerHTML = [...new Set(MENU.map(d => d.cat))].map(c => {
   const items = MENU.filter(d => d.cat === c);
@@ -390,15 +392,23 @@ document.addEventListener("click", () => { try{ ctx = ctx || new (window.AudioCo
 // ----- online orders (sent from the website) -----
 let online = {}, onlineLoaded = false, lastOnlineNew = 0;
 const waNumber = p => { let d = String(p || "").replace(/\D/g, ""); if(d.startsWith("0")) d = "27" + d.slice(1); return d; };
-const nameKey = n => String(n).replace(/\s*\(.*\)\s*$/, "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-  .toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter(Boolean).sort().join(" ");
+const SKIP_WORDS = new Set(["toastie","toasties","toasty","toasts","croissant","croissants","savoury","savory","and","the","a","with"]);
+const nameWords = n => String(n).replace(/\s*\(.*\)\s*$/, "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+  .toLowerCase().replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter(w => w && !SKIP_WORDS.has(w));
+const nameKey = n => nameWords(n).sort().join(" ");
+const findMenu = raw => {
+  const exact = MENU_BY_KEY[nameKey(raw)]; if(exact) return exact;
+  const w = nameWords(raw); if(!w.length) return null;
+  const hits = MENU.filter(m => { const mw = nameWords(m.name); return mw.every(x => w.includes(x)) || w.every(x => mw.includes(x)); });
+  return hits.length === 1 ? hits[0] : null;      // only when it is clearly one dish
+};
 const MENU_BY_KEY = {};
 MENU.forEach(m => { MENU_BY_KEY[nameKey(m.name)] = m; });
 const onlineItems = o => Object.values(o.items || {}).map(i => {
-  const raw = String(i.name || "").slice(0, 100), d = MENU_BY_KEY[nameKey(raw)];
+  const raw = String(i.name || "").slice(0, 100), d = findMenu(raw);
   const extra = (raw.match(/\s*\(.*\)\s*$/) || [""])[0].trim();   // keeps e.g. "(Brown)"
   return {
-    name: d ? d.name + (extra ? " " + extra : "") : raw,
+    name: d ? kname(d) + (extra ? " " + extra : "") : raw,
     qty: Math.max(1, Math.min(99, Math.round(Number(i.qty) || 1))),
     sent: Number(i.price) || 0,
     menu: d ? d.price : null
