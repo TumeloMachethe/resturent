@@ -139,6 +139,7 @@ nav button.pulse{animation:pulse 1.2s infinite}
     <div class="stat">Orders<b id="s-orders">0</b></div>
     <div class="stat">Money taken<b id="s-money">R0</b></div>
     <div class="stat">Still in kitchen<b id="s-open">0</b></div>
+    <div class="stat">Delivery fees (in money taken)<b id="s-fees">R0</b></div>
   </div>
   <table><thead><tr><th>Dish</th><th class="n">Sold</th><th class="n">Amount</th></tr></thead><tbody id="s-rows"></tbody></table>
   <button class="link" id="reset">Delete all orders (reset demo)</button>
@@ -355,10 +356,13 @@ function drawSummary(list){
   $("s-orders").textContent = t.length;
   $("s-money").textContent = money(t.reduce((s,o) => s + o.total, 0));
   $("s-open").textContent = t.filter(o => o.status === "new").length;
+  const fees = t.reduce((s,o) => s + (Number(o.deliveryFee) || 0), 0), feeCount = t.filter(o => Number(o.deliveryFee) > 0).length;
+  $("s-fees").textContent = money(fees);
   const rows = Object.entries(by).sort((a,b) => b[1].q - a[1].q);
   $("s-rows").innerHTML = rows.length ? rows.map(([n,v]) =>
     `<tr><td>${esc(n)}</td><td class="n">${v.q}</td><td class="n">${money(v.a)}</td></tr>`).join("")
     : `<tr><td colspan="3" class="empty">No sales yet today.</td></tr>`;
+  if(fees > 0) $("s-rows").innerHTML += `<tr><td>Delivery fees</td><td class="n">${feeCount}</td><td class="n">${money(fees)}</td></tr>`;
 }
 
 $("reset").onclick = () => {
@@ -386,17 +390,20 @@ document.addEventListener("click", () => { try{ ctx = ctx || new (window.AudioCo
 // ----- online orders (sent from the website) -----
 let online = {}, onlineLoaded = false, lastOnlineNew = 0;
 const waNumber = p => { let d = String(p || "").replace(/\D/g, ""); if(d.startsWith("0")) d = "27" + d.slice(1); return d; };
-const menuPrice = name => {
-  const base = String(name).replace(/\s*\(.*\)\s*$/, "").trim().toLowerCase();
-  const d = MENU.find(m => m.name.toLowerCase() === base);
-  return d ? d.price : null;
-};
-const onlineItems = o => Object.values(o.items || {}).map(i => ({
-  name: String(i.name || "").slice(0, 100),
-  qty: Math.max(1, Math.min(99, Math.round(Number(i.qty) || 1))),
-  sent: Number(i.price) || 0,
-  menu: menuPrice(i.name)
-}));
+const nameKey = n => String(n).replace(/\s*\(.*\)\s*$/, "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+  .toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter(Boolean).sort().join(" ");
+const MENU_BY_KEY = {};
+MENU.forEach(m => { MENU_BY_KEY[nameKey(m.name)] = m; });
+const onlineItems = o => Object.values(o.items || {}).map(i => {
+  const raw = String(i.name || "").slice(0, 100), d = MENU_BY_KEY[nameKey(raw)];
+  const extra = (raw.match(/\s*\(.*\)\s*$/) || [""])[0].trim();   // keeps e.g. "(Brown)"
+  return {
+    name: d ? d.name + (extra ? " " + extra : "") : raw,
+    qty: Math.max(1, Math.min(99, Math.round(Number(i.qty) || 1))),
+    sent: Number(i.price) || 0,
+    menu: d ? d.price : null
+  };
+});
 function startOnline(){ db.ref("onlineOrders").on("value", snap => {
   online = snap.val() || {};
   const list = Object.entries(online).map(([k,o]) => ({k, ...o})).filter(o => o.status === "new")
@@ -434,7 +441,7 @@ document.addEventListener("click", e => {
   const items = onlineItems(o).map(i => ({id: "web", name: i.name, price: i.menu !== null ? i.menu : i.sent, qty: i.qty}));
   const total = items.reduce((t,i) => t + i.price * i.qty, 0) + (Number(o.deliveryFee) || 0);
   db.ref("counter/" + today()).transaction(n => (n || 0) + 1).then(r => db.ref("orders").push({
-    num: r.snapshot.val(), slip: s, items, total, status: "new", online: true,
+    num: r.snapshot.val(), slip: s, items, total, deliveryFee: Number(o.deliveryFee) || 0, status: "new", online: true,
     customerName: String(o.name).slice(0, 60), createdAt: firebase.database.ServerValue.TIMESTAMP
   })).then(() => db.ref("onlineOrders/" + k + "/status").set("sent"))
     .catch(err => { alert("Could not send: " + err.message); ok.disabled = false; });
