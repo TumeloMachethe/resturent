@@ -128,13 +128,23 @@ h3.cat{margin:18px 0 8px;color:var(--amber)}
   </div>
 </main>
 
+<div id="loginbox" style="position:fixed;inset:0;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;z-index:9999">
+  <div style="width:320px;max-width:90%">
+    <h2 style="margin:0 0 14px">Good Eats staff login</h2>
+    <input id="lemail" type="email" autocomplete="username" placeholder="Email" style="width:100%;box-sizing:border-box;padding:12px;margin-bottom:10px;font-size:16px">
+    <input id="lpass" type="password" autocomplete="current-password" placeholder="Password" style="width:100%;box-sizing:border-box;padding:12px;margin-bottom:10px;font-size:16px">
+    <button id="lbtn" style="width:100%;padding:12px;font-size:16px">Sign in</button>
+    <div id="lmsg" style="color:#f66;margin-top:10px;min-height:1.4em"></div>
+  </div>
+</div>
+<button id="signout" style="position:fixed;bottom:6px;left:10px;font-size:12px;opacity:.6">Sign out</button>
 <div id="status">connecting…</div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
 // ====== EDIT YOUR MENU HERE (price in Rands) ======
-const PIN = "1234"; // owner PIN for the Today tab: change it here
 const MENU = [
   {id:"chi0", cat:"Chips", name:"Small Chips", price:20},
   {id:"chi1", cat:"Chips", name:"Medium Chips", price:25},
@@ -248,19 +258,15 @@ $("send").onclick = () => {
     .catch(err => { alert("Could not send: " + err.message); drawCart(); });
 };
 
-// ----- PIN lock -----
+// ----- Today tab (only reachable after staff login) -----
 function applyLock(){
-  $("lock").hidden = unlocked; $("sumbody").hidden = !unlocked; $("pin").value = ""; $("pinmsg").textContent = "";
+  $("lock").hidden = true; $("sumbody").hidden = false;
 }
-$("unlock").onclick = () => {
-  if($("pin").value === PIN){ unlocked = true; applyLock(); }
-  else { $("pinmsg").textContent = "Wrong PIN"; $("pin").value = ""; }
-};
-$("pin").onkeydown = e => { if(e.key === "Enter") $("unlock").click(); };
+applyLock();
 
 // ----- sold out -----
 let soldout = {};
-db.ref("soldout").on("value", sn => { soldout = sn.val() || {}; drawSold(); });
+function startSold(){ db.ref("soldout").on("value", sn => { soldout = sn.val() || {}; drawSold(); }); }
 function drawSold(){
   document.querySelectorAll(".dish").forEach(b => {
     const so = !!soldout[b.dataset.id]; b.disabled = so; b.classList.toggle("so", so);
@@ -275,7 +281,7 @@ $("stock").onclick = e => {
 };
 
 // ----- live data -----
-db.ref("orders").on("value", snap => {
+function startOrders(){ db.ref("orders").on("value", snap => {
   orders = snap.val() || {};
   const list = Object.entries(orders).map(([k,o]) => ({k,...o}));
   const fresh = list.filter(o => o.status === "new").length;
@@ -283,7 +289,7 @@ db.ref("orders").on("value", snap => {
   lastNew = fresh; loaded = true;
   drawSlips(); drawDisplay(list); drawKitchen(list); drawReady(list); drawSummary(list);
   $("status").textContent = "● live";
-}, err => { $("status").textContent = "offline: " + err.message; });
+}, err => { $("status").textContent = "offline: " + err.message; }); }
 
 const tag = o => o.slip ? `Slip <span class="slipbig">${o.slip}</span>` : "Order #" + o.num;
 function drawDisplay(list){
@@ -358,6 +364,20 @@ function beep(){
 }
 $("snd").onclick = () => { beep(); $("snd").textContent = "Sound on (tap to test)"; };
 document.addEventListener("click", () => { try{ ctx = ctx || new (window.AudioContext || window.webkitAudioContext)(); ctx.resume(); }catch(e){} }, {once:true});
+
+// ----- staff login -----
+let liveStarted = false;
+$("lbtn").onclick = () => {
+  $("lmsg").textContent = "";
+  firebase.auth().signInWithEmailAndPassword($("lemail").value.trim(), $("lpass").value)
+    .catch(() => { $("lmsg").textContent = "Wrong email or password"; });
+};
+$("lpass").onkeydown = e => { if(e.key === "Enter") $("lbtn").click(); };
+$("signout").onclick = () => firebase.auth().signOut().then(() => location.reload());
+firebase.auth().onAuthStateChanged(user => {
+  $("loginbox").style.display = user ? "none" : "flex";
+  if(user && !liveStarted){ liveStarted = true; startSold(); startOrders(); }
+});
 </script>
 </body>
 </html>
