@@ -70,6 +70,16 @@ h3.cat{margin:18px 0 8px;color:var(--amber)}
 #lock input{width:100%;padding:14px;font:inherit;font-size:24px;text-align:center;letter-spacing:.4em;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink);margin:10px 0}
 #pinmsg{color:var(--red);min-height:1.4em;margin-top:8px}
 #status{position:fixed;bottom:8px;right:10px;font-size:13px;color:var(--mute)}
+.ticket.online{border-color:#4aa3ff}
+.ticket.online .who{font-size:20px}
+.ticket.online a{color:#7cc0ff}
+.ticket.online .meta{margin:4px 0;color:var(--ink)}
+.ticket.online .note{margin:6px 0;padding:8px;border-radius:8px;background:#222;font-size:15px}
+.ticket.online .flag{color:var(--amber);font-size:14px}
+.okbtn{width:100%;padding:14px;font:inherit;font-weight:700;border:0;border-radius:10px;background:var(--green);color:#fff;cursor:pointer}
+.nobtn{width:100%;margin-top:8px;padding:10px;font:inherit;border-radius:10px;border:1px solid var(--red);background:none;color:var(--red);cursor:pointer}
+nav button.pulse{animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(74,163,255,.9)}50%{box-shadow:0 0 0 6px rgba(74,163,255,0)}}
 </style>
 </head>
 <body>
@@ -77,6 +87,7 @@ h3.cat{margin:18px 0 8px;color:var(--amber)}
 <nav>
   <button data-v="order">Take orders</button>
   <button data-v="kitchen">Kitchen <span id="kcount"></span></button>
+  <button data-v="online">Online orders <span id="ocount"></span></button>
   <button data-v="display">Display</button>
   <button data-v="summary">Today</button>
 </nav>
@@ -105,6 +116,12 @@ h3.cat{margin:18px 0 8px;color:var(--amber)}
   <div class="cols" id="queue"></div>
   <h2 style="margin-top:26px">Out of stock? Tap a dish</h2>
   <div class="stock" id="stock"></div>
+</main>
+
+<main id="online">
+  <h2>Online orders <button class="soundbtn" id="osnd">Test online sound</button></h2>
+  <p class="empty" style="padding:0 0 10px">Contact the customer first (call or WhatsApp). Once confirmed, send it to the kitchen.</p>
+  <div class="cols" id="onlineq"></div>
 </main>
 
 <main id="display">
@@ -184,6 +201,7 @@ const db = firebase.database();
 const $ = id => document.getElementById(id);
 const R = n => "R" + n;
 const money = n => R(n.toLocaleString());
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let cart = {}, orders = {}, loaded = false, lastNew = 0, unlocked = false;
 
 // ----- tabs -----
@@ -194,7 +212,7 @@ function show(v){
   location.hash = v;
 }
 document.querySelectorAll("nav button").forEach(b => b.onclick = () => show(b.dataset.v));
-show(["order","kitchen","display","summary"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "order");
+show(["order","kitchen","online","display","summary"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "order");
 
 // ----- menu + cart -----
 const info = k => { const [id, br] = k.split("|"); const d = MENU.find(m => m.id === id); return {d, name: d.name + (br ? " (" + br + ")" : "")}; };
@@ -291,14 +309,14 @@ function startOrders(){ db.ref("orders").on("value", snap => {
   $("status").textContent = "● live";
 }, err => { $("status").textContent = "offline: " + err.message; }); }
 
-const tag = o => o.slip ? `Slip <span class="slipbig">${o.slip}</span>` : "Order #" + o.num;
+const tag = o => (o.slip ? `Slip <span class="slipbig">${o.slip}</span>` : "Order #" + o.num) + (o.online ? ` <span class="t">· online · ${esc(o.customerName)}</span>` : "");
 function drawDisplay(list){
   const f = st => list.filter(o => o.status === st).sort((a, b) => a.createdAt - b.createdAt)
     .map(o => `<span class="bn">${o.slip || o.num}</span>`).join("") || `<span class="empty">—</span>`;
   $("d-prep").innerHTML = f("new"); $("d-ready").innerHTML = f("ready");
 }
 const time = ts => new Date(ts).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
-const itemsHtml = o => "<ul>" + (o.items || []).map(i => `<li>${i.qty} × ${i.name}</li>`).join("") + "</ul>";
+const itemsHtml = o => "<ul>" + (o.items || []).map(i => `<li>${i.qty} × ${esc(i.name)}</li>`).join("") + "</ul>";
 
 function drawKitchen(list){
   const q = list.filter(o => o.status === "new").sort((a,b) => a.createdAt - b.createdAt);
@@ -339,7 +357,7 @@ function drawSummary(list){
   $("s-open").textContent = t.filter(o => o.status === "new").length;
   const rows = Object.entries(by).sort((a,b) => b[1].q - a[1].q);
   $("s-rows").innerHTML = rows.length ? rows.map(([n,v]) =>
-    `<tr><td>${n}</td><td class="n">${v.q}</td><td class="n">${money(v.a)}</td></tr>`).join("")
+    `<tr><td>${esc(n)}</td><td class="n">${v.q}</td><td class="n">${money(v.a)}</td></tr>`).join("")
     : `<tr><td colspan="3" class="empty">No sales yet today.</td></tr>`;
 }
 
@@ -365,6 +383,78 @@ function beep(){
 $("snd").onclick = () => { beep(); $("snd").textContent = "Sound on (tap to test)"; };
 document.addEventListener("click", () => { try{ ctx = ctx || new (window.AudioContext || window.webkitAudioContext)(); ctx.resume(); }catch(e){} }, {once:true});
 
+// ----- online orders (sent from the website) -----
+let online = {}, onlineLoaded = false, lastOnlineNew = 0;
+const waNumber = p => { let d = String(p || "").replace(/\D/g, ""); if(d.startsWith("0")) d = "27" + d.slice(1); return d; };
+const menuPrice = name => {
+  const base = String(name).replace(/\s*\(.*\)\s*$/, "").trim().toLowerCase();
+  const d = MENU.find(m => m.name.toLowerCase() === base);
+  return d ? d.price : null;
+};
+const onlineItems = o => Object.values(o.items || {}).map(i => ({
+  name: String(i.name || "").slice(0, 100),
+  qty: Math.max(1, Math.min(99, Math.round(Number(i.qty) || 1))),
+  sent: Number(i.price) || 0,
+  menu: menuPrice(i.name)
+}));
+function startOnline(){ db.ref("onlineOrders").on("value", snap => {
+  online = snap.val() || {};
+  const list = Object.entries(online).map(([k,o]) => ({k, ...o})).filter(o => o.status === "new")
+    .sort((a,b) => a.createdAt - b.createdAt);
+  if(onlineLoaded && list.length > lastOnlineNew) chime();
+  lastOnlineNew = list.length; onlineLoaded = true;
+  $("ocount").textContent = list.length ? "(" + list.length + ")" : "";
+  document.querySelector('nav button[data-v="online"]').classList.toggle("pulse", list.length > 0);
+  drawOnline(list);
+}, err => { console.error("online orders:", err.message); }); }
+function drawOnline(list){
+  $("onlineq").innerHTML = list.length ? list.map(o => {
+    const items = onlineItems(o);
+    const lis = items.map(i => `<li>${i.qty} × ${esc(i.name)}${i.menu !== null && i.menu !== i.sent ? ` <span class="flag">⚠ website R${i.sent}, menu R${i.menu}</span>` : ""}${i.menu === null ? ` <span class="flag">⚠ not on menu</span>` : ""}</li>`).join("");
+    const map = String(o.mapsLink || "").startsWith("https://www.google.com/maps") ? ` · <a href="${esc(o.mapsLink)}" target="_blank" rel="noopener">map</a>` : "";
+    return `<div class="ticket online"><h3><span class="who">${esc(o.name)}</span><span class="t">${time(o.createdAt)}</span></h3>
+      <div class="meta">📞 <a href="tel:${esc(String(o.phone).replace(/[^\d+]/g, ""))}">${esc(o.phone)}</a> · <a href="https://wa.me/${waNumber(o.phone)}" target="_blank" rel="noopener">WhatsApp</a></div>
+      <div class="meta">${esc(o.orderType)}${o.address ? " · " + esc(o.address) : ""}${map}</div>
+      ${o.notes ? `<div class="note">${esc(o.notes)}</div>` : ""}
+      <ul>${lis}</ul>
+      <div class="meta">${Number(o.deliveryFee) ? "Delivery: " + R(Number(o.deliveryFee)) + " · " : ""}Total: <b>${money(Number(o.total) || 0)}</b> (pay on collection)</div>
+      <button class="okbtn" data-k="${o.k}">Contacted — send to kitchen</button><button class="nobtn" data-k="${o.k}">Reject</button></div>`;
+  }).join("") : `<div class="empty">No online orders waiting.</div>`;
+}
+document.addEventListener("click", e => {
+  const no = e.target.closest(".nobtn");
+  if(no){ if(confirm("Reject this online order?")) db.ref("onlineOrders/" + no.dataset.k + "/status").set("rejected"); return; }
+  const ok = e.target.closest(".okbtn"); if(!ok) return;
+  const k = ok.dataset.k, o = online[k]; if(!o || o.status !== "new") return;
+  const used = usedSlips(); let free = 1; while(used.has(free) && free < 30) free++;
+  const ans = prompt("Slip number for this order (1-30):", free); if(ans === null) return;
+  const s = parseInt(ans, 10);
+  if(!(s >= 1 && s <= 30) || used.has(s)){ alert("Pick a free slip number from 1 to 30."); return; }
+  ok.disabled = true;
+  const items = onlineItems(o).map(i => ({id: "web", name: i.name, price: i.menu !== null ? i.menu : i.sent, qty: i.qty}));
+  const total = items.reduce((t,i) => t + i.price * i.qty, 0) + (Number(o.deliveryFee) || 0);
+  db.ref("counter/" + today()).transaction(n => (n || 0) + 1).then(r => db.ref("orders").push({
+    num: r.snapshot.val(), slip: s, items, total, status: "new", online: true,
+    customerName: String(o.name).slice(0, 60), createdAt: firebase.database.ServerValue.TIMESTAMP
+  })).then(() => db.ref("onlineOrders/" + k + "/status").set("sent"))
+    .catch(err => { alert("Could not send: " + err.message); ok.disabled = false; });
+});
+
+// ----- online order chime (soft rising notes, different from the kitchen beep) -----
+function chime(){
+  try{
+    ctx = ctx || new (window.AudioContext || window.webkitAudioContext)(); ctx.resume();
+    const t = ctx.currentTime;
+    [660, 880, 1320].forEach((f, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain(), s = t + i * .18;
+      o.type = "sine"; o.frequency.value = f; o.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(.0001, s); g.gain.exponentialRampToValueAtTime(.5, s + .03); g.gain.exponentialRampToValueAtTime(.0001, s + .5);
+      o.start(s); o.stop(s + .55);
+    });
+  }catch(e){}
+}
+$("osnd").onclick = () => chime();
+
 // ----- staff login -----
 let liveStarted = false;
 $("lbtn").onclick = () => {
@@ -376,7 +466,7 @@ $("lpass").onkeydown = e => { if(e.key === "Enter") $("lbtn").click(); };
 $("signout").onclick = () => firebase.auth().signOut().then(() => location.reload());
 firebase.auth().onAuthStateChanged(user => {
   $("loginbox").style.display = user ? "none" : "flex";
-  if(user && !liveStarted){ liveStarted = true; startSold(); startOrders(); }
+  if(user && !liveStarted){ liveStarted = true; startSold(); startOrders(); startOnline(); }
 });
 </script>
 </body>
