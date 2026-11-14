@@ -492,7 +492,186 @@ async function play(n, src, hooks){
 }
 
 
-window.chefPlay = play;
+async function collect(n, src, hooks){
+  let rd; try{ rd = new THREE.WebGLRenderer({alpha: true, antialias: true}); }catch(e){ rd = null; }
+  if(!rd){ hooks.setup(); hooks.finish(); return; }
+  const a = src.getBoundingClientRect(); hooks.setup();
+  const W = innerWidth, H = innerHeight, k = .9;
+  rd.setPixelRatio(Math.min(devicePixelRatio, 2)); rd.setSize(W, H);
+  Object.assign(rd.domElement.style, {position: "fixed", top: 0, left: 0, zIndex: 60, pointerEvents: "none"});
+  document.body.appendChild(rd.domElement);
+  const sc = new THREE.Scene(), cam = new THREE.PerspectiveCamera(10, W / H, 10, 40000);
+  cam.position.z = (H / 2) / Math.tan(5 * Math.PI / 180);
+  sc.add(new THREE.AmbientLight(0xffffff, .72)); const dl = new THREE.DirectionalLight(0xffffff, .5); dl.position.set(-250, 350, 500); sc.add(dl);
+
+  // the number card as a 3D slab (colours copied from the real card)
+  const cs = getComputedStyle(src), cv = document.createElement("canvas"); cv.width = 512; cv.height = Math.round(512 * a.height / a.width);
+  const cg = cv.getContext("2d"); cg.fillStyle = cs.backgroundColor; cg.beginPath(); cg.roundRect(0, 0, cv.width, cv.height, cv.width * .08); cg.fill();
+  cg.fillStyle = cs.color; cg.font = `800 ${cv.height * .62}px system-ui,sans-serif`; cg.textAlign = "center"; cg.textBaseline = "middle"; cg.fillText(n, cv.width / 2, cv.height * .54);
+  const side = mat(0x1d7a50), chip = new THREE.Mesh(new THREE.BoxGeometry(a.width, a.height, 40), [side, side, side, side, new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(cv)}), side]);
+  sc.add(chip);
+
+  // chef stands on the side of the card nearest a screen edge and pulls the card off that edge
+  const cx0 = a.left + a.width / 2 - W / 2, cy = H / 2 - (a.top + a.height / 2), clampX = x => Math.max(-W / 2 + 70, Math.min(W / 2 - 70, x));
+  const gap = q => Math.abs(clampX(cx0 + q * (a.width / 2 + 300)) - (cx0 + q * a.width / 2));
+  let s = cx0 >= 0 ? 1 : -1; if(gap(s) < 200) s = -s;
+  const f = -s, stand = clampX(cx0 + s * (a.width / 2 + 300));
+
+  const ch = buildChef(); sc.add(ch.root, ch.shadow);
+  const tw = r => { const c = document.createElement("canvas"); c.width = c.height = 32; const x = c.getContext("2d"); x.fillStyle = "#c89b5a"; x.fillRect(0, 0, 32, 32); x.strokeStyle = "#7a5526"; x.lineWidth = 5; for(let i = -2; i < 3; i++){ x.beginPath(); x.moveTo(i * 16, 0); x.lineTo(i * 16 + 32, 32); x.stroke(); } const T = new THREE.CanvasTexture(c); T.wrapS = T.wrapT = THREE.RepeatWrapping; T.repeat.set(r, 1); return T; };
+  const ropeT = tw(10), ropeM = new THREE.MeshLambertMaterial({map: ropeT}), ringM = new THREE.MeshLambertMaterial({map: tw(34)}), hand = new THREE.Object3D(); hand.position.y = -24; ch.armL.el.add(hand);
+  const coil = new THREE.Mesh(new THREE.TorusGeometry(7, 2.6, 8, 16), ringM); hand.add(coil);
+  const hy = a.height / 2 + 5, hz = 25, ring = new THREE.Group(), rm = new THREE.Group(), knot = new THREE.Mesh(new THREE.CylinderGeometry(5.5, 4.5, 14, 12), ringM);
+  const lp = Array.from({length: 36}, (_, i) => { const q = i / 36 * Math.PI * 2; return new THREE.Vector3(0, hy * Math.cos(q), hz * Math.sin(q)); });
+  rm.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(lp, true), 72, 3, 8, true), ringM));
+  knot.position.y = hy; knot.rotation.z = Math.PI / 2; rm.add(knot); ring.add(rm); ring.visible = false; sc.add(ring);
+  let rope = null; const V = (x, y, z) => new THREE.Vector3(x, y, z), P = V(0, 0, 0), H0 = V(0, 0, 0), E = V(0, 0, 0), K = V(0, 0, 0);
+  const drawRope = (p0, p1, sag) => { if(rope){ sc.remove(rope); rope.geometry.dispose(); }
+    const m = p0.clone().add(p1).multiplyScalar(.5); m.y -= sag; ropeT.repeat.set(p0.distanceTo(p1) * 1.05 / 12, 1);
+    rope = new THREE.Mesh(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(p0.clone(), m, p1.clone()), 24, 2.6, 6), ropeM); sc.add(rope); };
+  const say = document.createElement("div"); say.className = "say"; say.style.opacity = 0; document.body.appendChild(say);
+  let last = ""; const speak = t => { if(t === last) return; last = t; say.textContent = t; say.style.opacity = t ? 1 : 0; if(t) say.animate([{scale: ".6"}, {scale: "1"}], {duration: 200}); };
+  const puff = (sx, sy) => { const p = document.createElement("div"), z = 8 + Math.random() * 12; p.className = "puff";
+    Object.assign(p.style, {width: z + "px", height: z + "px", left: sx - z / 2 + "px", top: sy + "px"}); document.body.appendChild(p);
+    p.animate([{opacity: .7, transform: "scale(.6)"}, {opacity: 0, transform: `translate(${-f * 14}px,-12px) scale(1.8)`}], {duration: 600}).finished.then(() => p.remove()); };
+
+  // timeline: walk in, wind up, throw, rope flies, lasso lands, brace, then walk backwards pulling the card off the edge
+  const Din = W / 2 + 80 - stand * s, T0 = Math.min(2.4, Din / 190), TW = .7, TT = .3, TF = .5, TL = .6;
+  const Dc = W / 2 + a.width / 2 + 40 - cx0 * s, Tp = Math.max(3.2, Math.min(5.6, Dc / 170));
+  const t1 = T0, t2 = t1 + TW, t3 = t2 + TT, t4 = t3 + TF, t5 = t4 + TL, tEnd = t5 + Tp;
+  const swv = .5 * Math.sin(2 * Math.PI * Din / 50), msgOrder = `Order ${n} was collected!`;
+  let gotH = false, lastPuff = 0; const t0 = performance.now();
+
+  await new Promise(done => {
+    (function tick(now){
+      const t = (now - t0) / 1000;
+      if(t > tEnd){ say.remove(); if(rope) rope.geometry.dispose(); rd.domElement.remove(); rd.dispose(); hooks.finish(); return done(); }
+      let rootX = stand, gt = Din / 50, lean = 0, aL = 0, aR = 0, eL = 0, pw = 0, strain = 0, cardX = cx0, rot = 0, msg = "", fu = -1, taut = 0, dist = 0;
+      if(t < t1){ const u = sm(t / t1), d = Din * (1 - Math.pow(1 - u, 1.6)); rootX = stand + s * (Din - d); gt = d / 50; aL = .5 * Math.sin(2 * Math.PI * gt); aR = -aL; }
+      else if(t < t2){ const u = smooth(sm((t - t1) / TW)); pw = smooth(sm((t - t1) / .25)); aL = swv * (1 - u) + .9 * u; aR = -swv * (1 - u); lean = -.05 * u; msg = msgOrder; }
+      else if(t < t3){ const u = sm((t - t2) / TT); pw = 1; aL = .9 - 2.8 * ease(u); lean = -.05 + .2 * smooth(u); msg = msgOrder; }
+      else if(t < t4){ const u = sm((t - t3) / TF); pw = 1; fu = u; aL = -1.9 + .5 * smooth(sm(u * 2)); lean = .15 - .2 * smooth(u); }
+      else if(t < t5){ const u = smooth(sm((t - t4) / TL)); pw = 1; fu = 2; taut = u; aL = -1.4 + .25 * u; aR = -u; eL = -.3 * u; lean = -.05 - .25 * u; strain = u; msg = "Gotcha!"; rot = .07 * Math.sin(t * 38) * (1 - u); }
+      else { const x = sm((t - t5) / Tp), u = Math.pow(x, 1.4), env = sm(x * 5), wob = Math.sin(2 * Math.PI * 7 * u) * env;
+        dist = Dc * Math.max(0, u + .035 * wob); rootX = stand + s * dist; gt = Din / 50 - dist / 50; cardX = cx0 + s * dist; pw = 1 - smooth(sm((t - t5) / .3));
+        fu = 2; taut = 1; strain = 1; aL = -1.15; aR = -1; eL = -.3; lean = -.3; rot = -s * .06 * wob;
+        msg = x < .3 ? "Heave…!" : x < .65 ? "Clearing it off…" : "Enjoy your meal!";
+        if(now - lastPuff > 150){ lastPuff = now; puff(rootX + W / 2 + s * 40, H / 2 - (cy - 105 * k) + 6); } }
+      speak(msg);
+
+      const R = ch.root, hip = 74, zc = Math.max(0, -lean) * 30;
+      R.position.set(rootX, cy - 105 * k, 0); R.scale.set(f * k, k, k);
+      ch.shadow.position.set(rootX, R.position.y - 2, -20); ch.shadow.scale.set(1, .22, 1);
+      ch.spine.position.y = hip; ch.spine.rotation.x = lean; ch.head.rotation.x = -lean * .7; ch.head.rotation.z = Math.sin(t * 28) * .05 * strain;
+      ch.armL.g.rotation.x = aL - lean; ch.armR.g.rotation.x = aR - lean; ch.armL.el.rotation.x = eL; ch.armR.el.rotation.x = eL * .8;
+      const fa = foot(gt, zc), fb = foot(gt + .5, zc), mix = (x, y) => x + (y - x) * pw;
+      ch.legL.h.position.y = ch.legR.h.position.y = hip;
+      legIK(ch.legL, mix(fa.z, 3), 8.5 + mix(fa.y, 0) - hip); legIK(ch.legR, mix(fb.z, -9), 8.5 + mix(fb.y, 0) - hip);
+      ch.sw.forEach((q, i) => { const u = (t * 1.2 + i / 3) % 1; q.visible = strain > .3; q.position.set((i === 1 ? 19 : -19) + (i - 1) * 2, 32 - u * 30, 6 - u * 20); q.scale.setScalar(1 - u * .6); });
+      chip.position.set(cardX, cy, 0); chip.rotation.z = rot;
+
+      coil.visible = t < t3; hand.getWorldPosition(P);
+      if(fu >= 0){
+        if(!gotH){ gotH = true; H0.copy(P); }
+        const A = V(cardX + s * (a.width / 2 - 8), cy, 0); ring.visible = true;
+        if(fu <= 1){ E.copy(H0).lerp(A, ease(fu)); E.y += 45 * Math.sin(Math.PI * fu); ring.position.copy(E); ring.rotation.set(0, 0, .25 * Math.sin(fu * 9)); rm.rotation.y = 1.1 - .8 * fu; ring.scale.setScalar(1.5); }
+        else { ring.position.copy(A); ring.rotation.set(0, 0, rot); rm.rotation.y = .3; ring.scale.setScalar(1.5 - .5 * Math.min(1, (t - t4) / .25)); }
+        ring.updateMatrixWorld(true); knot.getWorldPosition(K); drawRope(P, K, fu <= 1 ? 30 - 20 * fu : 40 * (1 - taut));
+      }
+      const hp = ch.head.getWorldPosition(V(0, 0, 0));
+      say.style.left = hp.x + W / 2 + "px"; say.style.top = H / 2 - hp.y - 70 * k + "px";
+      rd.render(sc, cam); requestAnimationFrame(tick);
+    })(t0);
+  });
+}
+
+async function bring(n, src, hooks){
+  let rd; try{ rd = new THREE.WebGLRenderer({alpha: true, antialias: true}); }catch(e){ rd = null; }
+  if(!rd){ hooks.setup(); hooks.land(); return; }
+  const a = src.getBoundingClientRect(); hooks.setup();
+  const W = innerWidth, H = innerHeight, k = .9;
+  rd.setPixelRatio(Math.min(devicePixelRatio, 2)); rd.setSize(W, H);
+  Object.assign(rd.domElement.style, {position: "fixed", top: 0, left: 0, zIndex: 60, pointerEvents: "none"});
+  document.body.appendChild(rd.domElement);
+  const sc = new THREE.Scene(), cam = new THREE.PerspectiveCamera(10, W / H, 10, 40000);
+  cam.position.z = (H / 2) / Math.tan(5 * Math.PI / 180);
+  sc.add(new THREE.AmbientLight(0xffffff, .72)); const dl = new THREE.DirectionalLight(0xffffff, .5); dl.position.set(-250, 350, 500); sc.add(dl);
+
+  // the number card as a 3D slab (colours copied from the real card)
+  const cs = getComputedStyle(src), cv = document.createElement("canvas"); cv.width = 512; cv.height = Math.round(512 * a.height / a.width);
+  const cg = cv.getContext("2d"); cg.fillStyle = cs.backgroundColor; cg.beginPath(); cg.roundRect(0, 0, cv.width, cv.height, cv.width * .08); cg.fill();
+  cg.fillStyle = cs.color; cg.font = `800 ${cv.height * .62}px system-ui,sans-serif`; cg.textAlign = "center"; cg.textBaseline = "middle"; cg.fillText(n, cv.width / 2, cv.height * .54);
+  const side = mat(0x141414), chip = new THREE.Mesh(new THREE.BoxGeometry(a.width, a.height, 40), [side, side, side, side, new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(cv)}), side]);
+  sc.add(chip);
+
+  const cx0 = a.left + a.width / 2 - W / 2, cy = H / 2 - (a.top + a.height / 2), Lc = a.width / 2 + 300;
+  let s = cx0 >= 0 ? 1 : -1; if(Math.abs(cx0 - s * Lc) > W / 2 - 50) s = -s;
+  const f = -s, Xs = s * (W / 2 + 90), Xf = cx0 - s * Lc, Dtot = s * (Xs - Xf);
+
+  const ch = buildChef(); sc.add(ch.root, ch.shadow);
+  const tw = r => { const c = document.createElement("canvas"); c.width = c.height = 32; const x = c.getContext("2d"); x.fillStyle = "#c89b5a"; x.fillRect(0, 0, 32, 32); x.strokeStyle = "#7a5526"; x.lineWidth = 5; for(let i = -2; i < 3; i++){ x.beginPath(); x.moveTo(i * 16, 0); x.lineTo(i * 16 + 32, 32); x.stroke(); } const T = new THREE.CanvasTexture(c); T.wrapS = T.wrapT = THREE.RepeatWrapping; T.repeat.set(r, 1); return T; };
+  const ropeT = tw(10), ropeM = new THREE.MeshLambertMaterial({map: ropeT}), ringM = new THREE.MeshLambertMaterial({map: tw(34)}), hand = new THREE.Object3D(); hand.position.y = -24; ch.armL.el.add(hand);
+  const coil = new THREE.Mesh(new THREE.TorusGeometry(7, 2.6, 8, 16), ringM); hand.add(coil);
+  const hy = a.height / 2 + 5, hz = 25, ring = new THREE.Group(), rm = new THREE.Group(), knot = new THREE.Mesh(new THREE.CylinderGeometry(5.5, 4.5, 14, 12), ringM);
+  const lp = Array.from({length: 36}, (_, i) => { const q = i / 36 * Math.PI * 2; return new THREE.Vector3(0, hy * Math.cos(q), hz * Math.sin(q)); });
+  rm.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(lp, true), 72, 3, 8, true), ringM));
+  knot.position.y = hy; knot.rotation.z = Math.PI / 2; rm.add(knot); ring.add(rm); ring.visible = false; sc.add(ring);
+  let rope = null; const V = (x, y, z) => new THREE.Vector3(x, y, z), P = V(0, 0, 0), H0 = V(0, 0, 0), E = V(0, 0, 0), K = V(0, 0, 0);
+  const drawRope = (p0, p1, sag) => { if(rope){ sc.remove(rope); rope.geometry.dispose(); }
+    const m = p0.clone().add(p1).multiplyScalar(.5); m.y -= sag; ropeT.repeat.set(p0.distanceTo(p1) * 1.05 / 12, 1);
+    rope = new THREE.Mesh(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(p0.clone(), m, p1.clone()), 24, 2.6, 6), ropeM); sc.add(rope); };
+  const say = document.createElement("div"); say.className = "say"; say.style.opacity = 0; document.body.appendChild(say);
+  let last = ""; const speak = t => { if(t === last) return; last = t; say.textContent = t; say.style.opacity = t ? 1 : 0; if(t) say.animate([{scale: ".6"}, {scale: "1"}], {duration: 200}); };
+  const puff = (sx, sy) => { const p = document.createElement("div"), z = 8 + Math.random() * 12; p.className = "puff";
+    Object.assign(p.style, {width: z + "px", height: z + "px", left: sx - z / 2 + "px", top: sy + "px"}); document.body.appendChild(p);
+    p.animate([{opacity: .7, transform: "scale(.6)"}, {opacity: 0, transform: `translate(${-f * 14}px,-12px) scale(1.8)`}], {duration: 600}).finished.then(() => p.remove()); };
+
+  // timeline: chef drags the number in on a rope from the screen edge, lands it in Preparing, slips the loop off, wipes his brow, walks away
+  const Tp = Math.max(3.4, Math.min(5.6, Dtot / 190)), Tc = .5, Td = .6, Tw = 2.3, Te = 2.2, t1 = Tp, t2 = t1 + Tc, t3 = t2 + Td, t4 = t3 + Tw, tEnd = t4 + Te, Gf = Dtot / 50;
+  let lastPuff = 0, landed = false; const t0 = performance.now();
+  await new Promise(done => {
+    (function tick(now){
+      const t = (now - t0) / 1000;
+      if(t > tEnd){ say.remove(); if(rope) rope.geometry.dispose(); rd.domElement.remove(); rd.dispose(); return done(); }
+      let dist = Dtot, gt = Gf, lean = 0, aL = 0, aR = 0, eL = 0, pw = 0, strain = 0, rot = 0, msg = "", scl = 1, ww = 0, ringU = 0, retr = 0, sag = 6, rx = null;
+      if(t < t1){ const x = t / t1; dist = Dtot * (1 - Math.pow(1 - x, 1.6)); gt = dist / 50; lean = .3; aL = 1; aR = .8; strain = .6; rot = s * .05 * Math.sin(2 * Math.PI * 6 * x) * sm(x * 5) * (1 - x);
+        msg = x < .25 ? "Fresh order coming through!" : x < .7 ? "Heavy one…!" : "Almost there!";
+        if(now - lastPuff > 150){ lastPuff = now; puff(Xs - s * dist + W / 2 + s * 40, H / 2 - (cy - 105 * k) + 6); } }
+      else if(t < t2){ const u = smooth(sm((t - t1) / Tc)); pw = u; lean = .3 * (1 - u); aL = 1 - .5 * u; aR = .8 * (1 - u); strain = .6 * (1 - u); ringU = u; sag = 6 + 30 * u; }
+      else if(t < t3){ const u = smooth(sm((t - t2) / Td)); pw = 1; aL = .5 - .3 * u; retr = u; ringU = 1; sag = 36 * (1 - u); }
+      else if(t < t4){ const lt = t - t3, wt = lt - .5; pw = 1; aL = .2;
+        ww = wt > 0 ? smooth(sm(wt / .6)) * (1 - smooth(sm((wt - 1) / .5))) : 0; msg = lt < .9 ? `Order ${n} is cooking!` : wt > .5 && wt < 1.4 ? "Whew!" : ""; }
+      else { const lt = t - t4, d = 150 * (lt < .4 ? lt * lt / .8 : lt - .2); rx = Xf + f * d; gt = Gf + d / 50; pw = 1 - smooth(sm(lt / .4)); aL = .5 * Math.sin(2 * Math.PI * gt) * sm(lt / .5); aR = -aL; scl = 1 - sm((lt - (Te - .5)) / .5); }
+      speak(msg);
+      const rootX = rx === null ? Xs - s * dist : rx, cardX = Xs - s * dist + s * Lc;
+      if(t >= t3 && !landed){ landed = true; sc.remove(chip); hooks.land(); }
+
+      const R = ch.root, hip = 74, zc = -lean * 28, ik = armIK(9 + 6 * Math.sin(t * 11), 37);
+      R.position.set(rootX, cy - 105 * k, 0); R.scale.set(f * k * scl, k * scl, k * scl);
+      ch.shadow.position.set(rootX, R.position.y - 2, -20); ch.shadow.scale.set(scl, .22 * scl, 1);
+      ch.spine.position.y = hip; ch.spine.rotation.x = lean; ch.head.rotation.x = -lean * .7 - .12 * ww; ch.head.rotation.z = Math.sin(t * 28) * .05 * strain;
+      const nl = aL - lean; ch.armL.g.rotation.x = nl + (ik.th - nl) * ww; ch.armL.el.rotation.x = eL + (ik.el - eL) * ww;
+      ch.armR.g.rotation.x = aR - lean; ch.armR.el.rotation.x = eL * .8;
+      const fa = foot(gt, zc), fb = foot(gt + .5, zc), mix = (x, y) => x + (y - x) * pw;
+      ch.legL.h.position.y = ch.legR.h.position.y = hip;
+      legIK(ch.legL, mix(fa.z, 3), 8.5 + mix(fa.y, 0) - hip); legIK(ch.legR, mix(fb.z, -9), 8.5 + mix(fb.y, 0) - hip);
+      ch.sw.forEach((q, i) => { const u = (t * 1.2 + i / 3) % 1; q.visible = strain > .3; q.position.set((i === 1 ? 19 : -19) + (i - 1) * 2, 32 - u * 30, 6 - u * 20); q.scale.setScalar(1 - u * .6); });
+      chip.position.set(cardX, cy, 0); chip.rotation.z = rot;
+
+      coil.visible = t >= t3; hand.getWorldPosition(P);
+      if(t < t3){
+        const Ao = V(cardX - s * (a.width / 2 - 8) - s * 70 * ringU, cy, 0);
+        ring.visible = true; ring.position.copy(retr > 0 ? E.copy(Ao).lerp(P, ease(retr)) : Ao); ring.rotation.set(0, 0, rot); rm.rotation.y = .3; ring.scale.setScalar(1 + .5 * ringU - .9 * retr);
+        ring.updateMatrixWorld(true); knot.getWorldPosition(K); drawRope(P, K, sag);
+      } else { ring.visible = false; if(rope){ sc.remove(rope); rope.geometry.dispose(); rope = null; } }
+      const hp = ch.head.getWorldPosition(V(0, 0, 0));
+      say.style.left = hp.x + W / 2 + "px"; say.style.top = H / 2 - hp.y - 70 * k + "px";
+      rd.render(sc, cam); requestAnimationFrame(tick);
+    })(t0);
+  });
+}
+
+window.chefPlay = play; window.chefBring = bring; window.chefCollect = collect;
 })();
 
 // ----- live data -----
@@ -516,35 +695,41 @@ function startOrders(){
 setInterval(() => { if(liveStarted && ordersDay && today() !== ordersDay) startOrders(); }, 300000);
 
 const tag = o => (o.slip ? `Slip <span class="slipbig">${o.slip}</span>` : "Order #" + o.num) + (o.online ? ` <span class="t">· online · ${esc(o.customerName)}</span>` : "");
-let dispList = [], dispPrev = null, chefQ = [], chefBusy = false, hideReady = null; const holding = new Set();
+let dispList = [], dispPrev = null, chefQ = [], chefBusy = false, hideReady = null, hideIn = null, outN = null; const holding = new Set();
 const dnum = o => o.slip || o.num;
 function renderDisplay(){
   const f = pick => dispList.filter(pick).sort((a, b) => a.createdAt - b.createdAt)
-    .map(o => `<span class="bn" data-n="${dnum(o)}"${hideReady === dnum(o) && o.status === "ready" ? ' style="visibility:hidden"' : ""}>${dnum(o)}</span>`).join("") || `<span class="empty">—</span>`;
+    .map(o => `<span class="bn" data-n="${dnum(o)}"${(hideReady === dnum(o) && o.status === "ready") || (hideIn === dnum(o) && o.status === "new") || (outN === dnum(o) && o.status === "served") ? ' style="visibility:hidden"' : ""}>${dnum(o)}</span>`).join("") || `<span class="empty">—</span>`;
   $("d-prep").innerHTML = f(o => o.status === "new" || (o.status === "ready" && holding.has(dnum(o))));
-  $("d-ready").innerHTML = f(o => o.status === "ready" && !holding.has(dnum(o)));
+  $("d-ready").innerHTML = f(o => (o.status === "ready" && !holding.has(dnum(o))) || (o.status === "served" && outN === dnum(o)));
 }
 function drawDisplay(list){
   dispList = list;
   const prev = dispPrev; dispPrev = {}; list.forEach(o => dispPrev[o.k] = o.status);
-  if(prev && window.THREE && !document.hidden && $("display").classList.contains("on") && !matchMedia("(prefers-reduced-motion:reduce)").matches)
-    list.filter(o => o.status === "ready" && prev[o.k] === "new").sort((a, b) => a.createdAt - b.createdAt).forEach(o => {
-      if(!chefBusy && !chefQ.length){ holding.add(dnum(o)); chefQ.push(dnum(o)); }       // only when the chef is free, so no order is ever delayed
-    });
+  if(prev && window.THREE && !document.hidden && $("display").classList.contains("on") && !matchMedia("(prefers-reduced-motion:reduce)").matches && !chefBusy && !chefQ.length){
+    const by = p => list.filter(p).sort((a, b) => a.createdAt - b.createdAt)[0];       // only when the chef is free, so no order is ever delayed
+    let o, t;
+    if(o = by(o => o.status === "ready" && prev[o.k] === "new")){ t = "push"; holding.add(dnum(o)); }                                  // Preparing -> Ready
+    else if(o = by(o => o.status === "served" && prev[o.k] === "ready")){ t = "out"; outN = dnum(o); }                                 // collected: lasso it off Ready
+    else if(o = by(o => o.status === "new" && prev[o.k] === undefined && Date.now() - o.createdAt < 60000)){ t = "in"; hideIn = dnum(o); }  // new order: drag it into Preparing
+    if(t) chefQ.push({t, n: dnum(o)});
+  }
   renderDisplay(); if(!chefBusy && chefQ.length) runChef();
 }
 async function runChef(){
   chefBusy = true;
   while(chefQ.length){
-    const n = chefQ.shift(), src = document.querySelector(`#d-prep .bn[data-n="${n}"]`);
+    const {t, n} = chefQ.shift(), src = document.querySelector(`#${t === "out" ? "d-ready" : "d-prep"} .bn[data-n="${n}"]`);
     try{
       if(!src) throw 0;
-      await window.chefPlay(n, src, {
+      if(t === "push") await window.chefPlay(n, src, {
         setup(){ holding.delete(n); hideReady = n; renderDisplay(); const c = document.querySelector(`#d-ready .bn[data-n="${n}"]`); return (c || src).getBoundingClientRect(); },
         land(){ hideReady = null; renderDisplay(); const c = document.querySelector(`#d-ready .bn[data-n="${n}"]`); if(c) c.classList.add("pop"); }
       });
+      else if(t === "out") await window.chefCollect(n, src, {setup(){}, finish(){ outN = null; renderDisplay(); }});
+      else await window.chefBring(n, src, {setup(){}, land(){ hideIn = null; renderDisplay(); const c = document.querySelector(`#d-prep .bn[data-n="${n}"]`); if(c) c.classList.add("pop"); }});
     }catch(e){ console.error("chef:", e); }
-    holding.delete(n); hideReady = null; renderDisplay();
+    holding.delete(n); hideReady = null; hideIn = null; outN = null; renderDisplay();
   }
   chefBusy = false;
 }
