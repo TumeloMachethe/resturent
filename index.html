@@ -83,6 +83,12 @@ h3.cat{margin:18px 0 8px;color:var(--amber)}
 .nobtn{width:100%;margin-top:8px;padding:10px;font:inherit;border-radius:10px;border:1px solid var(--red);background:none;color:var(--red);cursor:pointer}
 nav button.pulse{animation:pulse 1.2s infinite}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(74,163,255,.9)}50%{box-shadow:0 0 0 6px rgba(74,163,255,0)}}
+.bn.pop{animation:chefpop .6s cubic-bezier(.2,1.6,.4,1)}
+@keyframes chefpop{0%{transform:scale(.6)}60%{transform:scale(1.18);box-shadow:0 0 0 14px rgba(46,158,107,.35)}100%{transform:scale(1);box-shadow:0 0 0 0 rgba(46,158,107,0)}}
+.say{position:fixed;z-index:61;transform:translate(-50%,-100%);white-space:nowrap;background:#fff;color:#111;font-weight:800;font-size:17px;padding:6px 12px;border-radius:14px;pointer-events:none}
+.say:after{content:"";position:absolute;left:50%;top:100%;margin-left:-6px;border:6px solid transparent;border-top-color:#fff}
+.puff{position:fixed;z-index:59;border-radius:50%;background:rgba(244,241,234,.5);pointer-events:none}
+@media(prefers-reduced-motion:reduce){.bn.pop{animation:none}}
 </style>
 </head>
 <body>
@@ -164,6 +170,7 @@ nav button.pulse{animation:pulse 1.2s infinite}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 // ====== EDIT YOUR MENU HERE (price in Rands) ======
 const MENU = [
@@ -327,6 +334,167 @@ $("stock").onclick = e => {
   db.ref("soldout/" + b.dataset.id).set(soldout[b.dataset.id] ? null : true);
 };
 
+// ----- chef animation: a little 3D chef pushes the number from Preparing to Ready -----
+(function(){
+const YAW = Math.PI / 2 - .25;
+const sm = u => Math.max(0, Math.min(1, u)), ease = u => 1 - (1 - u) * (1 - u), smooth = u => u * u * (3 - 2 * u);
+const mat = c => new THREE.MeshLambertMaterial({color: c});
+const add = (par, geo, m, x = 0, y = 0, z = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); par.add(o); return o; };
+const cyl = (a, b, h) => new THREE.CylinderGeometry(a, b, h, 20), ball = r => new THREE.SphereGeometry(r, 20, 14);
+
+function apronTex(){
+  const c = document.createElement("canvas"); c.width = 200; c.height = 240; const g = c.getContext("2d");
+  g.fillStyle = "#f7b52c"; g.fillRect(0, 0, 200, 240);
+  g.strokeStyle = "#111"; g.lineWidth = 8; g.strokeRect(10, 10, 180, 220);
+  g.fillStyle = "#111"; g.textAlign = "center"; g.font = "800 62px system-ui,sans-serif";
+  g.fillText("Good", 100, 112); g.fillText("Eats", 100, 178);
+  return new THREE.CanvasTexture(c);
+}
+function legIK(L, tz, ty){
+  const L1 = 38, L2 = 38, dm = Math.min(Math.hypot(tz, ty), L1 + L2 - .01), dir = Math.atan2(-tz, -ty);
+  const th = dir - Math.acos(Math.max(-1, Math.min(1, (L1 * L1 + dm * dm - L2 * L2) / (2 * L1 * dm))));
+  const sh = Math.atan2(-(tz + Math.sin(th) * L1), -(ty + Math.cos(th) * L1));
+  L.h.rotation.x = th; L.kn.rotation.x = sh - th; L.ft.rotation.x = -sh;
+}
+function armIK(tz, ty){            // hand target relative to the shoulder; elbow sticks out forward
+  const L = 24, dm = Math.min(Math.hypot(tz, ty), 47.9), dir = Math.atan2(-tz, -ty), th = dir + Math.acos(dm / 48);
+  return {th, el: Math.atan2(-(tz + Math.sin(th) * L), -(ty + Math.cos(th) * L)) - th};
+}
+function foot(g, zc){          // planted while the body moves over it, then swings forward
+  const q = g - Math.floor(g);
+  if(q < .7) return {z: zc + 50 * (.35 - q), y: 0};
+  const u = (q - .7) / .3; return {z: zc + 50 * (-.35 + .7 * smooth(u)), y: 14 * Math.sin(Math.PI * u)};
+}
+function buildChef(){
+  const white = mat(0xffffff), skin = mat(0xf2c29b), root = new THREE.Group(), wrap = new THREE.Group();
+  root.add(wrap); wrap.rotation.y = YAW;
+  const leg = x => { const h = new THREE.Group(); h.position.set(x, 80, 0); wrap.add(h); const pm = mat(0x4a4f72);
+    add(h, cyl(8.5, 7.5, 38), pm, 0, -19, 0);
+    const kn = new THREE.Group(); kn.position.y = -38; h.add(kn); add(kn, ball(7.6), pm); add(kn, cyl(7.5, 6.5, 38), pm, 0, -19, 0);
+    const ft = new THREE.Group(); ft.position.y = -38; kn.add(ft); add(ft, new THREE.BoxGeometry(14, 9, 26), mat(0x111111), 0, -4, 7);
+    return {h, kn, ft}; };
+  const legL = leg(-11), legR = leg(11);
+  const spine = new THREE.Group(); spine.position.y = 80; wrap.add(spine);
+  const torso = add(spine, cyl(22, 24, 60), white, 0, 30, 0); torso.scale.z = .8;
+  add(spine, new THREE.PlaneGeometry(36, 43), new THREE.MeshLambertMaterial({map: apronTex()}), 0, 24, 19.6);
+  const arm = x => { const g = new THREE.Group(); g.position.set(x, 54, 0); spine.add(g);
+    add(g, cyl(6.5, 6, 24), white, 0, -12, 0);
+    const el = new THREE.Group(); el.position.y = -24; g.add(el); add(el, ball(6.2), white); add(el, cyl(6, 5.8, 22), white, 0, -11, 0); add(el, ball(8), skin, 0, -24, 0);
+    return {g, el}; };
+  const armL = arm(-27), armR = arm(27);
+  const head = new THREE.Group(); head.position.y = 64; spine.add(head);
+  add(head, ball(17), skin, 0, 18, 0); add(head, ball(4.2), mat(0xeeae85), 0, 16, 17);
+  [-1, 1].forEach(s => {
+    const e = add(head, ball(3.2), mat(0x111111), 6.5 * s, 22, 15); e.scale.y = .45;
+    const b = add(head, new THREE.BoxGeometry(10, 2.4, 2), mat(0x5a3a22), 6.5 * s, 27.5, 15.5); b.rotation.z = .45 * s;
+    const ck = add(head, ball(4), mat(0xe8806f), 11 * s, 12, 12); ck.scale.z = .5;
+  });
+  add(head, new THREE.BoxGeometry(13, 7, 1.5), mat(0x111111), 0, 8, 16.2);
+  add(head, new THREE.BoxGeometry(10, 4, 2), white, 0, 8, 16.8);
+  add(head, cyl(15.5, 15.5, 9), white, 0, 36, 0);
+  add(head, ball(17), white, 0, 52, 0);
+  [[-11, 46, 0], [11, 46, 0], [0, 46, 11], [0, 46, -11]].forEach(p => add(head, ball(11), white, ...p));
+  const sw = [0, 1, 2].map(() => add(head, ball(2.8), mat(0x6ec1ff)));
+  const shadow = new THREE.Mesh(new THREE.CircleGeometry(42, 24), new THREE.MeshBasicMaterial({color: 0, transparent: true, opacity: .35}));
+  shadow.scale.y = .22; shadow.rotation.x = 0; shadow.position.set(0, 0, -20);
+  return {root, spine, head, armL, armR, legL, legR, sw, shadow};
+}
+
+async function play(n, src, hooks){
+  let rd; try{ rd = new THREE.WebGLRenderer({alpha: true, antialias: true}); }catch(e){ rd = null; }
+  if(!rd){ hooks.setup(); hooks.land(); return; }
+  const a = src.getBoundingClientRect(), dst = hooks.setup();
+  const W = innerWidth, H = innerHeight, dx = dst.left - a.left, dy = dst.top - a.top, len = Math.hypot(dx, dy) || 1;
+  const f = dx >= -20 ? 1 : -1, k = .9;
+  rd.setPixelRatio(Math.min(devicePixelRatio, 2)); rd.setSize(W, H);
+  Object.assign(rd.domElement.style, {position: "fixed", top: 0, left: 0, zIndex: 60, pointerEvents: "none"});
+  document.body.appendChild(rd.domElement);
+  const sc = new THREE.Scene(), cam = new THREE.PerspectiveCamera(10, W / H, 10, 40000);
+  cam.position.z = (H / 2) / Math.tan(5 * Math.PI / 180);
+  sc.add(new THREE.AmbientLight(0xffffff, .72)); const dl = new THREE.DirectionalLight(0xffffff, .5); dl.position.set(-250, 350, 500); sc.add(dl);
+
+  // the number card, as a thick 3D slab
+  const c = document.createElement("canvas"); c.width = 512; c.height = Math.round(512 * a.height / a.width);
+  const g = c.getContext("2d"); g.fillStyle = "#222"; g.fillRect(0, 0, c.width, c.height);
+  g.fillStyle = "#f7b52c"; g.font = `800 ${c.height * .62}px system-ui,sans-serif`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(n, c.width / 2, c.height * .54);
+  const side = mat(0x141414), chip = new THREE.Mesh(new THREE.BoxGeometry(a.width, a.height, 40), [side, side, side, side, new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(c)}), side]);
+  chip.rotation.y = .35 * f; sc.add(chip);
+
+  const ch = buildChef(); sc.add(ch.root, ch.shadow);
+  const say = document.createElement("div"); say.className = "say"; say.style.opacity = 0; document.body.appendChild(say);
+  let last = ""; const speak = t => { if(t === last) return; last = t; say.textContent = t; say.style.opacity = t ? 1 : 0; if(t) say.animate([{scale: ".6"}, {scale: "1"}], {duration: 200}); };
+
+  // shove timeline: burst forward, slip back a little, repeat
+  const S = 6, dur = Math.min(5.6, 3.6 + len * .0015 * 1000 / 1000), kf = [];
+  let base = 0;
+  for(let i = 0; i < S; i++){
+    const last = i === S - 1, adv = last ? 1 : (i + 1) / S;
+    kf.push({o: i / S, p: base, r: 0, e: 1});
+    kf.push({o: last ? 1 : (i + .6) / S, p: adv, r: last ? 0 : (i % 2 ? .03 : -.03), e: 0});
+    base = adv - .03;
+  }
+  const pf = x => { for(let i = 0; i < kf.length - 1; i++){ const A = kf[i], B = kf[i + 1];
+    if(x <= B.o || i === kf.length - 2){ const u = sm((x - A.o) / ((B.o - A.o) || 1)), e = A.e ? ease(u) : smooth(u); return {p: A.p + (B.p - A.p) * e, r: A.r + (B.r - A.r) * e, slip: !A.e}; } } };
+
+  const cx0 = a.left + a.width / 2 - W / 2, cy0 = H / 2 - (a.top + a.height / 2), reach = a.width / 2 + 58 * k;
+  const T0 = 1.4, T2 = 1.9, T4 = 3.5, T3 = 2.8;
+  let revealed = false, lastPuff = 0, t0 = performance.now(), phase = 0;
+  const puff = (sx, sy) => { const p = document.createElement("div"), s = 8 + Math.random() * 12; p.className = "puff";
+    Object.assign(p.style, {width: s + "px", height: s + "px", left: sx - s / 2 + "px", top: sy + "px"}); document.body.appendChild(p);
+    p.animate([{opacity: .7, transform: "scale(.6)"}, {opacity: 0, transform: `translate(${-f * 14}px,-12px) scale(1.8)`}], {duration: 600}).finished.then(() => p.remove()); };
+
+  await new Promise(done => {
+    let rootX = 0;
+    (function tick(now){
+      const t = (now - t0) / 1000, TP = T0 + dur, G1 = 4.4 + len / 50;
+      let pr = 0, eff = 0, scl = 1, walkX = 0, g = 0, b = 0, tb = 0, pw = 0, wa = 1, ww = 0, showSw = false;
+      if(t < T0){ phase = 0; const u = t / T0, tr = 220 * ease(u); walkX = -f * (220 - tr); g = tr / 50; scl = sm(t / .25); b = sm((u - .6) / .4); }
+      else if(t < TP){ phase = 1; const x = (t - T0) / dur, r = pf(x); pr = r.p; g = 4.4 + len * pr / 50; b = 1; showSw = true;
+        const cyc = (x * S) % 1; eff = cyc < .6 ? smooth(cyc / .6) : 1 - smooth((cyc - .6) / .4);
+        chip.rotation.z = r.r; speak(x < .35 ? "Hnnngh…" : x < .72 ? "Heavy…!" : "Almost…");
+        if(now - lastPuff > 140){ lastPuff = now; puff(rootX + W / 2 - f * 45, H / 2 - ch.root.position.y + 6); } }
+      else if(t < TP + T2){ phase = 2; pr = 1; g = G1; b = 1; tb = smooth(sm((t - TP) / 1.3)); pw = tb; showSw = true;
+        if(!revealed){ revealed = true; sc.remove(chip); hooks.land(); }
+        speak("Phew… order up!"); }
+      else if(t < TP + T2 + T4){ phase = 4; pr = 1; g = G1; pw = 1; wa = 0;      // straighten up slowly, then wipe his brow
+        const lt = t - TP - T2, up = smooth(sm(lt / 1.2)), wt = lt - 1.1; b = tb = 1 - up; showSw = lt < 1.7;
+        ww = wt > 0 ? smooth(sm(wt / .8)) * (1 - smooth(sm((wt - 1.5) / .8))) : 0; speak(wt > .5 && wt < 2 ? "Whew!" : ""); }
+      else if(t < TP + T2 + T4 + T3){ phase = 3; pr = 1; speak("");               // then walk along
+        const lt = t - TP - T2 - T4, dist = 150 * (lt < .4 ? lt * lt / .8 : lt - .2);
+        walkX = f * dist; g = G1 + dist / 50; pw = 1 - smooth(sm(lt / .4)); wa = sm(lt / .5); scl = 1 - sm((lt - (T3 - .5)) / .5); }
+      else { say.remove(); rd.domElement.remove(); rd.dispose(); return done(); }
+
+      const leanG = .06 + (.55 + .2 * eff - .06) * b, hipPush = 97 - 54 * Math.cos(leanG) + 6.7;
+      const hipG = 74 + (hipPush - 74) * b, zc = -22 * b;
+      const lean = leanG + (.45 - leanG) * tb + .03 * tb * Math.sin(t * 12), hip = hipG + (70 - hipG) * tb;
+      const handZ = 54 * Math.sin(phase === 1 ? lean : .55) + 55.6, reach = a.width / 2 + handZ * k * Math.sin(YAW);
+      chip.position.set(cx0 + dx * pr, cy0 - dy * pr, 0);
+      const R = ch.root; rootX = chip.position.x - f * reach + walkX + Math.sin(t * 45) * 1.4 * eff;
+      R.position.set(rootX, chip.position.y - 97 * k, 0); R.scale.set(f * k * scl, k * scl, k * scl);
+      ch.shadow.position.set(rootX, R.position.y - 2, -20); ch.shadow.scale.set(scl, .22 * scl, 1);
+      ch.spine.position.y = hip; ch.spine.rotation.x = lean;
+      ch.head.rotation.x = -lean * .7 - .12 * ww; ch.head.rotation.z = phase === 1 ? Math.sin(t * 28) * .06 * eff : 0;
+      const sw = .5 * wa * Math.sin(2 * Math.PI * g), ph = -(Math.PI / 2 - .12), jt = Math.sin(t * 40) * .04 * eff;
+      const nl = (sw * (1 - b) + ph * b) * (1 - tb) + .3 * tb + jt - lean, nr = (-sw * (1 - b) + ph * b) * (1 - tb) + .3 * tb - jt - lean;
+      const ik = armIK(9 + 6 * Math.sin(t * 11), 37);                              // hand dragging across the forehead
+      ch.armL.g.rotation.x = nl + (ik.th - nl) * ww; ch.armL.el.rotation.x = ik.el * ww;
+      ch.armR.g.rotation.x = nr; ch.armR.el.rotation.x = 0;
+      const fa = foot(g, zc), fb = foot(g + .5, zc), pa = {z: 3 + tb, y: 0}, pb = {z: -9 - 5 * tb, y: 0}, mix = (x, y) => x + (y - x) * pw;
+      ch.legL.h.position.y = ch.legR.h.position.y = hip;
+      legIK(ch.legL, mix(fa.z, pa.z), 8.5 + mix(fa.y, pa.y) - hip);
+      legIK(ch.legR, mix(fb.z, pb.z), 8.5 + mix(fb.y, pb.y) - hip);
+      ch.sw.forEach((s, i) => { const u = (t * 1.2 + i / 3) % 1; s.visible = showSw; s.position.set((i === 1 ? 19 : -19) + (i - 1) * 2, 32 - u * 30, 6 - u * 20); s.scale.setScalar(1 - u * .6); });
+      const hp = ch.head.getWorldPosition(new THREE.Vector3());
+      say.style.left = hp.x + W / 2 + "px"; say.style.top = H / 2 - hp.y - 70 * k + "px";
+      rd.render(sc, cam); requestAnimationFrame(tick);
+    })(t0);
+  });
+}
+
+
+window.chefPlay = play;
+})();
+
 // ----- live data -----
 let ordersQuery = null, ordersDay = null;
 function startOrders(){
@@ -348,10 +516,37 @@ function startOrders(){
 setInterval(() => { if(liveStarted && ordersDay && today() !== ordersDay) startOrders(); }, 300000);
 
 const tag = o => (o.slip ? `Slip <span class="slipbig">${o.slip}</span>` : "Order #" + o.num) + (o.online ? ` <span class="t">· online · ${esc(o.customerName)}</span>` : "");
+let dispList = [], dispPrev = null, chefQ = [], chefBusy = false, hideReady = null; const holding = new Set();
+const dnum = o => o.slip || o.num;
+function renderDisplay(){
+  const f = pick => dispList.filter(pick).sort((a, b) => a.createdAt - b.createdAt)
+    .map(o => `<span class="bn" data-n="${dnum(o)}"${hideReady === dnum(o) && o.status === "ready" ? ' style="visibility:hidden"' : ""}>${dnum(o)}</span>`).join("") || `<span class="empty">—</span>`;
+  $("d-prep").innerHTML = f(o => o.status === "new" || (o.status === "ready" && holding.has(dnum(o))));
+  $("d-ready").innerHTML = f(o => o.status === "ready" && !holding.has(dnum(o)));
+}
 function drawDisplay(list){
-  const f = st => list.filter(o => o.status === st).sort((a, b) => a.createdAt - b.createdAt)
-    .map(o => `<span class="bn">${o.slip || o.num}</span>`).join("") || `<span class="empty">—</span>`;
-  $("d-prep").innerHTML = f("new"); $("d-ready").innerHTML = f("ready");
+  dispList = list;
+  const prev = dispPrev; dispPrev = {}; list.forEach(o => dispPrev[o.k] = o.status);
+  if(prev && window.THREE && !document.hidden && $("display").classList.contains("on") && !matchMedia("(prefers-reduced-motion:reduce)").matches)
+    list.filter(o => o.status === "ready" && prev[o.k] === "new").sort((a, b) => a.createdAt - b.createdAt).forEach(o => {
+      if(!chefBusy && !chefQ.length){ holding.add(dnum(o)); chefQ.push(dnum(o)); }       // only when the chef is free, so no order is ever delayed
+    });
+  renderDisplay(); if(!chefBusy && chefQ.length) runChef();
+}
+async function runChef(){
+  chefBusy = true;
+  while(chefQ.length){
+    const n = chefQ.shift(), src = document.querySelector(`#d-prep .bn[data-n="${n}"]`);
+    try{
+      if(!src) throw 0;
+      await window.chefPlay(n, src, {
+        setup(){ holding.delete(n); hideReady = n; renderDisplay(); const c = document.querySelector(`#d-ready .bn[data-n="${n}"]`); return (c || src).getBoundingClientRect(); },
+        land(){ hideReady = null; renderDisplay(); const c = document.querySelector(`#d-ready .bn[data-n="${n}"]`); if(c) c.classList.add("pop"); }
+      });
+    }catch(e){ console.error("chef:", e); }
+    holding.delete(n); hideReady = null; renderDisplay();
+  }
+  chefBusy = false;
 }
 const time = ts => new Date(ts).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
 const itemsHtml = o => "<ul>" + (o.items || []).map(i => `<li>${i.qty} × ${esc(i.name)}</li>`).join("") + "</ul>";
