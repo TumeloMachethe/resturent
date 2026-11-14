@@ -76,6 +76,9 @@ h3.cat{margin:18px 0 8px;color:var(--amber)}
 .ticket.online .meta{margin:4px 0;color:var(--ink)}
 .ticket.online .note{margin:6px 0;padding:8px;border-radius:8px;background:#222;font-size:15px}
 .ticket.online .flag{color:var(--amber);font-size:14px}
+.ticket .age{margin-left:4px;color:var(--ink)}
+.ticket.age-warn{border-color:#ff7a1a}.ticket.age-warn .age{color:#ff7a1a}
+.ticket.age-late{border-color:var(--red);background:#2a1512}.ticket.age-late .age{color:var(--red)}
 .okbtn{width:100%;padding:14px;font:inherit;font-weight:700;border:0;border-radius:10px;background:var(--green);color:#fff;cursor:pointer}
 .nobtn{width:100%;margin-top:8px;padding:10px;font:inherit;border-radius:10px;border:1px solid var(--red);background:none;color:var(--red);cursor:pointer}
 nav button.pulse{animation:pulse 1.2s infinite}
@@ -279,15 +282,38 @@ $("send").onclick = () => {
     .catch(err => { alert("Could not send: " + err.message); drawCart(); });
 };
 
-// ----- Today tab (only reachable after staff login) -----
+// ----- Today tab (staff login, then the owner PIN) -----
+/* ##################################################################
+   >>>>>>>>>>>>>>>>>>>>>>>>  OWNER PIN (Today tab)  <<<<<<<<<<<<<<<<<<<
+   Change the number between the quotes. It is kept in this file only.
+   ################################################################## */
+const OWNER_PIN = "1234";
+
 function applyLock(){
-  $("lock").hidden = true; $("sumbody").hidden = false;
+  $("lock").hidden = unlocked; $("sumbody").hidden = !unlocked;
+  if(!unlocked){ $("pin").value = ""; $("pinmsg").textContent = ""; }
 }
 applyLock();
+function tryUnlock(){
+  if($("pin").value === OWNER_PIN){ unlocked = true; applyLock(); }
+  else { $("pinmsg").textContent = "Wrong PIN"; $("pin").value = ""; }
+}
+$("unlock").onclick = tryUnlock;
+$("pin").onkeydown = e => { if(e.key === "Enter") tryUnlock(); };
 
 // ----- sold out -----
 let soldout = {};
-function startSold(){ db.ref("soldout").on("value", sn => { soldout = sn.val() || {}; drawSold(); }); }
+function startSold(){ db.ref("soldout").on("value", sn => { soldout = sn.val() || {}; drawSold(); publishSold(); }); }
+// copy of the sold-out list for the website to read, keyed by dish name
+let lastPublicSold = null;
+function publishSold(){
+  const pub = {};
+  MENU.forEach(d => { if(soldout[d.id]) pub[nameKey(d.name)] = true; });
+  const str = JSON.stringify(pub);
+  if(str === lastPublicSold) return;
+  lastPublicSold = str;
+  db.ref("soldoutPublic").set(Object.keys(pub).length ? pub : null).catch(() => { lastPublicSold = null; });
+}
 function drawSold(){
   document.querySelectorAll(".dish").forEach(b => {
     const so = !!soldout[b.dataset.id]; b.disabled = so; b.classList.toggle("so", so);
@@ -302,7 +328,13 @@ $("stock").onclick = e => {
 };
 
 // ----- live data -----
-function startOrders(){ db.ref("orders").on("value", snap => {
+let ordersQuery = null, ordersDay = null;
+function startOrders(){
+  if(ordersQuery) ordersQuery.off();
+  ordersDay = today();
+  const cutoff = new Date(); cutoff.setHours(0,0,0,0); cutoff.setDate(cutoff.getDate() - 1);   // from the start of yesterday
+  ordersQuery = db.ref("orders").orderByChild("createdAt").startAt(cutoff.getTime());
+  ordersQuery.on("value", snap => {
   orders = snap.val() || {};
   const list = Object.entries(orders).map(([k,o]) => ({k,...o}));
   const fresh = list.filter(o => o.status === "new").length;
@@ -310,7 +342,10 @@ function startOrders(){ db.ref("orders").on("value", snap => {
   lastNew = fresh; loaded = true;
   drawSlips(); drawDisplay(list); drawKitchen(list); drawReady(list); drawSummary(list);
   $("status").textContent = "● live";
-}, err => { $("status").textContent = "offline: " + err.message; }); }
+}, err => { $("status").textContent = "offline: " + err.message; });
+}
+// if the screen is left on past midnight, move the "recent" window forward
+setInterval(() => { if(liveStarted && ordersDay && today() !== ordersDay) startOrders(); }, 300000);
 
 const tag = o => (o.slip ? `Slip <span class="slipbig">${o.slip}</span>` : "Order #" + o.num) + (o.online ? ` <span class="t">· online · ${esc(o.customerName)}</span>` : "");
 function drawDisplay(list){
@@ -325,10 +360,26 @@ function drawKitchen(list){
   const q = list.filter(o => o.status === "new").sort((a,b) => a.createdAt - b.createdAt);
   $("kcount").textContent = q.length ? "(" + q.length + ")" : "";
   $("queue").innerHTML = q.length ? q.map(o =>
-    `<div class="ticket"><h3><span>${tag(o)}</span><span class="t">${time(o.createdAt)}</span></h3>
+    `<div class="ticket" data-created="${o.createdAt}"><h3><span>${tag(o)}</span><span class="t">${time(o.createdAt)} · <b class="age"></b></span></h3>
      ${itemsHtml(o)}<button class="done" data-k="${o.k}" data-s="ready">Done — ready to serve</button><button class="cancel" data-k="${o.k}">Cancel order</button></div>`).join("")
     : `<div class="empty">No orders waiting.</div>`;
+  tickAges();
 }
+// ----- kitchen ticket timers: normal, then orange, then red as an order waits -----
+const WARN_MIN = 5, LATE_MIN = 10;      // change these two numbers to suit your kitchen
+let skew = 0;
+db.ref(".info/serverTimeOffset").on("value", sn => { skew = sn.val() || 0; });
+function tickAges(){
+  const now = Date.now() + skew;
+  document.querySelectorAll("#queue .ticket[data-created]").forEach(t => {
+    const m = Math.max(0, Math.floor((now - Number(t.dataset.created)) / 60000));
+    t.querySelector(".age").textContent = m < 1 ? "just now" : m + " min";
+    t.classList.toggle("age-warn", m >= WARN_MIN && m < LATE_MIN);
+    t.classList.toggle("age-late", m >= LATE_MIN);
+  });
+}
+setInterval(tickAges, 15000);
+
 function drawReady(list){
   const r = list.filter(o => o.status === "ready").sort((a,b) => a.createdAt - b.createdAt);
   $("now").innerHTML = r.length ? "Now serving: " + r.map(o => `<span class="chip">${o.slip || o.num}</span>`).join("") : "";
@@ -367,6 +418,7 @@ function drawSummary(list){
   if(fees > 0) $("s-rows").innerHTML += `<tr><td>Delivery fees</td><td class="n">${feeCount}</td><td class="n">${money(fees)}</td></tr>`;
 }
 
+
 $("reset").onclick = () => {
   if(confirm("Delete ALL orders? Use this only to clear demo data.")){
     db.ref("orders").remove(); db.ref("counter").remove();
@@ -396,8 +448,10 @@ const SKIP_WORDS = new Set(["toastie","toasties","toasty","toasts","croissant","
 const nameWords = n => String(n).replace(/\s*\(.*\)\s*$/, "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
   .toLowerCase().replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter(w => w && !SKIP_WORDS.has(w));
 const nameKey = n => nameWords(n).sort().join(" ");
+const fullKey = n => nameWords(String(n).replace(/[()]/g, " ")).sort().join(" ");   // keeps the words inside (...) so "Chips (Small)" = "Small Chips"
 const findMenu = raw => {
   const exact = MENU_BY_KEY[nameKey(raw)]; if(exact) return exact;
+  const full = MENU_BY_KEY[fullKey(raw)]; if(full) return full;
   const w = nameWords(raw); if(!w.length) return null;
   const hits = MENU.filter(m => { const mw = nameWords(m.name); return mw.every(x => w.includes(x)) || w.every(x => mw.includes(x)); });
   return hits.length === 1 ? hits[0] : null;      // only when it is clearly one dish
@@ -406,15 +460,15 @@ const MENU_BY_KEY = {};
 MENU.forEach(m => { MENU_BY_KEY[nameKey(m.name)] = m; });
 const onlineItems = o => Object.values(o.items || {}).map(i => {
   const raw = String(i.name || "").slice(0, 100), d = findMenu(raw);
-  const extra = (raw.match(/\s*\(.*\)\s*$/) || [""])[0].trim();   // keeps e.g. "(Brown)"
+  const extra = d && !MENU_BY_KEY[nameKey(raw)] ? "" : (raw.match(/\s*\(.*\)\s*$/) || [""])[0].trim();   // keeps e.g. "(Brown)"; not for "(Small)", which is part of the dish name
   return {
-    name: d ? kname(d) + (extra ? " " + extra : "") : raw,
+    name: d ? kname(d) + (extra && !kname(d).includes(extra) ? " " + extra : "") : raw,
     qty: Math.max(1, Math.min(99, Math.round(Number(i.qty) || 1))),
     sent: Number(i.price) || 0,
     menu: d ? d.price : null
   };
 });
-function startOnline(){ db.ref("onlineOrders").on("value", snap => {
+function startOnline(){ db.ref("onlineOrders").orderByChild("status").equalTo("new").on("value", snap => {
   online = snap.val() || {};
   const list = Object.entries(online).map(([k,o]) => ({k, ...o})).filter(o => o.status === "new")
     .sort((a,b) => a.createdAt - b.createdAt);
