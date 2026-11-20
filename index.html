@@ -215,6 +215,7 @@ body[data-view=display] .exitfs{display:block}
 .onote{width:100%;margin:0 0 10px;padding:10px 12px;font:inherit;font-size:16px;border-radius:10px;border:2px solid var(--line);background:#111;color:var(--ink)}
 .knote{margin:6px 0 10px;padding:8px 10px;border-radius:8px;background:var(--amber);color:#111;font-weight:800;font-size:20px}
 .clr.recall{border-color:var(--amber);color:var(--amber)}
+#cartpanel.quick .slipsrow,#cartpanel.quick .slips{opacity:.3}
 .stat b.sm{font-size:20px;line-height:1.25}
 </style>
 </head>
@@ -420,6 +421,8 @@ const info = k => { const [id, br] = k.split("|"); const d = MENU.find(m => m.id
 let bread = "Brown", soldout = {};
 const CATS = [...new Set(MENU.map(d => d.cat))];
 let curCat = CATS[0];
+const NO_KITCHEN = ["Drinks", "Magwinya"];      // the counter just hands these out; add or remove a category name to change it
+const isQuick = ids => ids.length > 0 && ids.every(id => NO_KITCHEN.includes(info(id).d.cat));
 const catCount = c => Object.keys(cart).reduce((s, k) => s + (info(k).d.cat === c ? cart[k] : 0), 0);
 function drawCats(){
   $("cats").innerHTML = CATS.map(c => { const n = catCount(c);
@@ -457,8 +460,10 @@ function drawCart(){
   }).join("") : `<div class="empty">Tap a dish to add it.</div>`;
   const total = ids.reduce((s,id) => s + cart[id] * info(id).d.price, 0), count = ids.reduce((s,id) => s + cart[id], 0);
   $("ctotal").textContent = money(total);
-  $("send").disabled = !ids.length || !slip;
-  $("send").textContent = !ids.length ? "Take payment" : slip ? "Take payment (slip " + slip + ")" : "Pick a slip number";
+  const quick = isQuick(ids);
+  $("send").disabled = !ids.length || (!quick && !slip);
+  $("send").textContent = !ids.length ? "Take payment" : quick ? "Take payment, hand over now" : slip ? "Take payment (slip " + slip + ")" : "Pick a slip number";
+  $("cartpanel").classList.toggle("quick", quick);
   $("clear").hidden = !ids.length;
   document.body.classList.toggle("hascart", ids.length > 0);
   $("cbinfo").innerHTML = `<b>${count}</b> item${count === 1 ? "" : "s"} · <b>${money(total)}</b>`;
@@ -504,7 +509,7 @@ drawSlips();
 // ----- send order -----
 const today = () => new Date().toLocaleDateString("en-CA");
 // pop-up that takes the payment at the counter (Cash or Card) before the order goes to the kitchen
-function askPayment(total){
+function askPayment(total, quick){
   return new Promise(res => {
     let method = null, got = 0;
     const m = document.createElement("div"); m.className = "modal";
@@ -516,7 +521,7 @@ function askPayment(total){
         <label>Cash received<input id="pgot" inputmode="decimal" autocomplete="off" placeholder="0"></label>
         <div class="chg" id="pchg"></div>
       </div>
-      <button class="big" id="pok" disabled>Payment received — send to kitchen</button><button class="paycancel" id="pno">Cancel</button></div>`;
+      <button class="big" id="pok" disabled>${quick ? "Payment received — hand over now" : "Payment received — send to kitchen"}</button><button class="paycancel" id="pno">Cancel</button></div>`;
     document.body.appendChild(m);
     const q = sel => m.querySelector(sel), r2 = n => Math.round(n * 100) / 100;
     const done = v => { m.remove(); res(v); };
@@ -545,27 +550,28 @@ function askPayment(total){
   });
 }
 $("send").onclick = async () => {
-  if(usedSlips().has(slip)){ alert("That slip number is already in use."); slip = null; drawSlips(); return; }
+  const quick = isQuick(Object.keys(cart));
+  if(!quick && usedSlips().has(slip)){ alert("That slip number is already in use."); slip = null; drawSlips(); return; }
   const items = Object.keys(cart).map(id => {
     const x = info(id);
     return {id, name:x.name, price:x.d.price, qty:cart[id]};
   });
   const total = items.reduce((s,i) => s + i.price * i.qty, 0);
-  const pay = await askPayment(total);                                   // nothing is sent until the payment is confirmed
+  const pay = await askPayment(total, quick);                                   // nothing is sent until the payment is confirmed
   if(!pay) return;
-  if(usedSlips().has(slip)){ alert("Slip " + slip + " was just taken on another device. Pick another slip and take the payment again."); slip = null; drawSlips(); return; }
+  if(!quick && usedSlips().has(slip)){ alert("Slip " + slip + " was just taken on another device. Pick another slip and take the payment again."); slip = null; drawSlips(); return; }
   $("send").disabled = true;
   const note = $("onote").value.trim().slice(0, 80);
   db.ref("counter/" + today()).transaction(n => (n || 0) + 1).then(r => {
     const base = {
-      num: r.snapshot.val(), slip, items, total, status: "new", paid: true, payMethod: pay.method,
+      num: r.snapshot.val(), slip: quick ? null : slip, items, total, status: quick ? "served" : "new", paid: true, payMethod: pay.method,
       createdAt: firebase.database.ServerValue.TIMESTAMP
     };
     return db.ref("orders").push(note ? {...base, note} : base).catch(err => {
       if(!note) throw err;                                                  // the note was the problem: still send the order
       return db.ref("orders").push(base).then(() => alert("The order went to the kitchen, but the note could not be saved. Tell the kitchen: " + note));
     });
-  }).then(() => { cart = {}; slip = null; $("onote").value = ""; drawSlips(); })
+  }).then(() => { cart = {}; if(!quick) slip = null; $("onote").value = ""; drawSlips(); })
     .catch(err => { alert("Could not send: " + err.message); drawCart(); });
 };
 
