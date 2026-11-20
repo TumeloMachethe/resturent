@@ -55,9 +55,9 @@ h3.cat{margin:18px 0 8px;color:var(--amber)}
 .now{margin-bottom:10px;font-size:20px}
 .chip{display:inline-block;min-width:48px;text-align:center;margin:0 6px 6px 0;padding:6px 12px;border-radius:10px;background:var(--green);color:#fff;font-weight:700;font-size:26px}
 .slipbig{font-size:30px;color:var(--amber)}
-.board{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.board{display:grid;grid-template-columns:1fr 1fr;gap:0;min-height:100vh}
 @media(max-width:700px){.board{grid-template-columns:1fr}}
-.board h2{font-size:30px;color:var(--amber)}
+.board h2{font-size:clamp(28px,4vw,56px);margin:0 0 20px;letter-spacing:.04em;text-transform:uppercase}
 .bignums{display:flex;flex-wrap:wrap;gap:12px}
 .bn{font-size:min(13vw,110px);font-weight:800;line-height:1;padding:.12em .28em;border-radius:16px;background:#222;color:var(--amber);min-width:1.5em;text-align:center}
 .bignums.ready .bn{background:var(--green);color:#fff}
@@ -70,15 +70,15 @@ h3.cat{margin:18px 0 8px;color:var(--amber)}
 #lock input{width:100%;padding:14px;font:inherit;font-size:24px;text-align:center;letter-spacing:.4em;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--ink);margin:10px 0}
 #pinmsg{color:var(--red);min-height:1.4em;margin-top:8px}
 #status{position:fixed;bottom:8px;right:10px;font-size:13px;color:var(--mute)}
-.ticket.online{border-color:#4aa3ff}
+.ticket.online{border-color:var(--amber)}
 .ticket.online .who{font-size:20px}
-.ticket.online a{color:#7cc0ff}
+.ticket.online a{color:var(--ink)}
 .ticket.online .meta{margin:4px 0;color:var(--ink)}
 .ticket.online .note{margin:6px 0;padding:8px;border-radius:8px;background:#222;font-size:15px}
 .ticket.online .flag{color:var(--amber);font-size:14px}
 .ticket .age{margin-left:4px;color:var(--ink)}
-.ticket.age-warn{border-color:#ff7a1a}.ticket.age-warn .age{color:#ff7a1a}
-.ticket.age-late{border-color:var(--red);background:#2a1512}.ticket.age-late .age{color:var(--red)}
+.ticket.age-warn,.ticket.online.age-warn{border-color:#ff7a1a}.ticket.age-warn .age{color:#ff7a1a}
+.ticket.age-late,.ticket.online.age-late{border-color:var(--red);background:#2a1512}.ticket.age-late .age{color:var(--red)}
 .okbtn{width:100%;padding:14px;font:inherit;font-weight:700;border:0;border-radius:10px;background:var(--green);color:#fff;cursor:pointer}
 .nobtn{width:100%;margin-top:8px;padding:10px;font:inherit;border-radius:10px;border:1px solid var(--red);background:none;color:var(--red);cursor:pointer}
 nav button.pulse{animation:pulse 1.2s infinite}
@@ -89,12 +89,93 @@ nav button.pulse{animation:pulse 1.2s infinite}
 .say:after{content:"";position:absolute;left:50%;top:100%;margin-left:-6px;border:6px solid transparent;border-top-color:#fff}
 .puff{position:fixed;z-index:59;border-radius:50%;background:rgba(244,241,234,.5);pointer-events:none}
 @media(prefers-reduced-motion:reduce){.bn.pop{animation:none}}
+
+/* ===== v2: tidier Take-orders screen, payment badges, slip picker ===== */
+nav button{font-size:16px;padding:14px 6px}
+nav button span{font-weight:700}
+@media(max-width:560px){nav{gap:5px;padding:8px 6px}nav button{font-size:13px;padding:12px 2px;line-height:1.2}}
+.order-layout{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
+.order-layout>div{min-width:0}
+@media(max-width:760px){.order-layout{grid-template-columns:minmax(0,1fr)}}
+.cats{display:flex;gap:8px;overflow-x:auto;padding:2px 0 12px;margin-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.cats::-webkit-scrollbar{display:none}
+.cats button{flex:0 0 auto;padding:12px 16px;font:inherit;font-weight:700;border-radius:999px;border:2px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;white-space:nowrap}
+.cats button.on{background:var(--amber);border-color:var(--amber);color:#111}
+.cats button i{font-style:normal;display:inline-block;min-width:22px;margin-left:6px;padding:1px 6px;border-radius:999px;background:var(--green);color:#fff;font-size:14px}
+.cats button.on i{background:#111;color:var(--amber)}
+.catname{margin:4px 0 10px;color:var(--amber)}
+.dgroup{grid-column:1/-1;border:2px solid var(--line);border-radius:12px;background:var(--card);padding:10px 12px}
+.dgroup h4{margin:0 0 8px;font-size:18px}
+.sizes{display:flex;gap:8px;flex-wrap:wrap}
+.sizes .dish{flex:1 1 90px;padding:14px 6px;background:#222}
+.dish{min-height:84px}
+.dish.added{border-color:var(--green)}
+.qty{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+.row>span:first-child{flex:1 1 auto;min-width:0}
+.qty button{width:44px;height:44px;font-size:22px;color:#111}
+.qty b{display:inline-block;min-width:26px;text-align:center}
+.paneltitle{display:flex;justify-content:space-between;align-items:center}
+.paneltitle h2{margin:6px 0}
+.clr{font:inherit;font-size:14px;padding:8px 12px;border-radius:8px;border:1px solid var(--red);background:none;color:var(--red);cursor:pointer}
+.slipsrow{margin-top:12px}
+.slips button{padding:12px 0}
+.cartbar{display:none;position:fixed;left:0;right:0;bottom:0;z-index:40;background:#000;border-top:2px solid var(--amber);padding:10px 14px;align-items:center;justify-content:space-between;gap:10px}
+.cartbar b{color:var(--amber)}
+.cartbar button{font:inherit;font-weight:700;padding:12px 18px;border:0;border-radius:10px;background:var(--green);color:#fff;cursor:pointer}
+@media(max-width:760px){
+  body.hascart[data-view=order] .cartbar{display:flex}
+  body.hascart[data-view=order]{padding-bottom:84px}
+  body.hascart[data-view=order] #status,body.hascart[data-view=order] #signout{bottom:76px}
+}
+.stocktitle{margin:14px 0 6px;color:var(--amber);font-size:16px}
+.chipbtn.part{border-color:var(--amber);color:var(--amber)}
+.badges{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.pay,.kind{display:inline-block;padding:4px 10px;border-radius:999px;font-weight:700;font-size:14px}
+.kind{background:#222;color:var(--ink);border:1px solid var(--line)}
+.pay.wait{background:var(--amber);color:#111}
+.pay.paid{background:var(--green);color:#fff}
+.pay.test{background:#333;color:var(--ink);border:1px dashed var(--mute)}
+.pay.cash{background:#333;color:var(--ink)}
+.ticket.online .contact{display:flex;gap:8px;margin:8px 0}
+.ticket.online .contact a{flex:1;text-align:center;padding:12px 6px;border-radius:10px;background:#2a2a2a;border:1px solid var(--line);color:var(--ink);font-weight:700;text-decoration:none}
+.ticket.online .contact a.wa{background:#2a2a2a;color:var(--ink)}
+.ticket.online .addr{margin:4px 0 6px}
+.ticket.online .payline{margin:8px 0;padding:10px;border-radius:10px;background:#2a2410;border:1px solid var(--amber);font-size:15px}
+.ticket.online .payline code{display:block;margin-top:4px;font-size:17px;font-weight:700;color:var(--amber);letter-spacing:.03em;user-select:all}
+.ticket.online.isTest{border-style:dashed}
+.paybtn{width:100%;padding:14px;font:inherit;font-weight:700;border:0;border-radius:10px;background:var(--amber);color:#111;cursor:pointer;margin-bottom:8px}
+.okbtn:disabled{background:#3a3a3a;color:#888;cursor:not-allowed}
+.ticket .where{margin:2px 0 8px;font-size:16px;color:var(--ink)}
+.ticket .where.deliv{color:var(--ink);font-weight:700}
+.ticket .paidtag{color:var(--green);font-weight:700}
+.ticket .collect{color:var(--amber);font-weight:700}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;z-index:500;padding:10px}
+.modal .box{background:var(--card);border:2px solid var(--line);border-radius:14px;padding:16px;width:440px;max-width:100%}
+.modal h3{margin:0 0 4px}
+.modal p{margin:0 0 10px;color:var(--mute);font-size:15px}
+
+/* ===== TV display: full screen, yellow Preparing | black Ready ===== */
+body[data-view=display] header,body[data-view=display] nav,body[data-view=display] #status,body[data-view=display] #signout{display:none}
+body[data-view=display]{background:#000}
+main#display{max-width:none;margin:0;padding:0}
+#display .board>div{padding:3vh 3vw;min-height:100vh}
+#display .board>div:first-child{background:var(--amber);color:#111}
+#display .board>div:last-child{background:#000;color:#fff}
+#display .board>div:first-child h2{color:#111}
+#display .board>div:last-child h2{color:var(--amber)}
+#display .bn{background:#111;color:var(--amber);font-size:min(11vw,150px)}
+#display .bignums.ready .bn{background:var(--amber);color:#111}
+#display .empty{opacity:.5;font-size:40px}
+#display .board>div:first-child .empty{color:#111}
+.exitfs{display:none;position:fixed;top:8px;right:8px;z-index:70;opacity:0;font:inherit;font-size:13px;padding:6px 10px;border:0;border-radius:8px;background:#000;color:#fff;cursor:pointer}
+body[data-view=display] .exitfs{display:block}
+.exitfs:hover,.exitfs:focus{opacity:.85}
 </style>
 </head>
 <body>
 <header><img src="data:image/jpeg;base64,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" alt="Good Eats"></header>
 <nav>
-  <button data-v="order">Take orders</button>
+  <button data-v="order">Take orders <span id="rcount"></span></button>
   <button data-v="kitchen">Kitchen <span id="kcount"></span></button>
   <button data-v="online">Online orders <span id="ocount"></span></button>
   <button data-v="display">Display</button>
@@ -104,14 +185,17 @@ nav button.pulse{animation:pulse 1.2s infinite}
 <main id="order">
   <div class="now" id="now"></div>
   <div class="order-layout">
-    <div><h2>Menu</h2><div id="menu"></div></div>
     <div>
+      <div class="cats" id="cats"></div>
+      <div id="menu"></div>
+    </div>
+    <div id="cartpanel">
       <div class="panel">
-        <h2>New order</h2>
-        <b>Slip number</b>
-        <div class="slips" id="slips"></div>
+        <div class="paneltitle"><h2>New order</h2><button class="clr" id="clear" hidden>Clear</button></div>
         <div id="cart"></div>
         <div class="total">Total: <span id="ctotal">R0</span></div>
+        <div class="slipsrow"><b>Slip number</b></div>
+        <div class="slips" id="slips"></div>
         <button class="big" id="send" disabled>Send to kitchen</button>
       </div>
       <h2 style="margin-top:18px">Ready to serve</h2>
@@ -119,20 +203,22 @@ nav button.pulse{animation:pulse 1.2s infinite}
     </div>
   </div>
 </main>
+<div class="cartbar" id="cartbar"><span id="cbinfo"></span><button id="cbgo">Review order</button></div>
 
 <main id="kitchen">
   <h2>Orders to prepare <button class="soundbtn" id="snd">Turn on sound</button></h2>
   <div class="cols" id="queue"></div>
   <h2 style="margin-top:26px">Out of stock? Tap a dish</h2>
-  <div class="stock" id="stock"></div>
+  <div id="stock"></div>
 </main>
 
 <main id="online">
   <h2>Online orders <button class="soundbtn" id="osnd">Test online sound</button></h2>
-  <p class="empty" style="padding:0 0 10px">Contact the customer first (call or WhatsApp). Once confirmed, send it to the kitchen.</p>
+  <p class="empty" style="padding:0 0 10px">1. Check the payment in PayFast and tap <b>Payment received</b>. 2. Send it to the kitchen. Call or WhatsApp the customer if anything is unclear.</p>
   <div class="cols" id="onlineq"></div>
 </main>
 
+<button class="exitfs" id="exitfs">Back to menu</button>
 <main id="display">
   <div class="board">
     <div><h2>Preparing</h2><div class="bignums" id="d-prep"></div></div>
@@ -146,6 +232,7 @@ nav button.pulse{animation:pulse 1.2s infinite}
   <h2>Today's sales</h2>
   <div class="stats">
     <div class="stat">Orders<b id="s-orders">0</b></div>
+    <div class="stat">Online orders<b id="s-online">0</b></div>
     <div class="stat">Money taken<b id="s-money">R0</b></div>
     <div class="stat">Still in kitchen<b id="s-open">0</b></div>
     <div class="stat">Delivery fees (in money taken)<b id="s-fees">R0</b></div>
@@ -174,9 +261,10 @@ nav button.pulse{animation:pulse 1.2s infinite}
 <script>
 // ====== EDIT YOUR MENU HERE (price in Rands) ======
 const MENU = [
-  {id:"chi0", cat:"Chips", name:"Small Chips", price:20},
-  {id:"chi1", cat:"Chips", name:"Medium Chips", price:25},
-  {id:"chi2", cat:"Chips", name:"Large Chips", price:30},
+  // grp = the heading on the tile, size = the button on it (leave both out for a plain one-tap dish)
+  {id:"chi0", cat:"Chips", grp:"Chips", size:"Small", name:"Small Chips", price:20},
+  {id:"chi1", cat:"Chips", grp:"Chips", size:"Medium", name:"Medium Chips", price:25},
+  {id:"chi2", cat:"Chips", grp:"Chips", size:"Large", name:"Large Chips", price:30},
   {id:"chi3", cat:"Chips", name:"Loaded Fries", price:40},
   {id:"sav0", cat:"Savoury", name:"Russian", price:15},
   {id:"sav1", cat:"Savoury", name:"Russian & Chips", price:25},
@@ -195,20 +283,54 @@ const MENU = [
   {id:"toa2", cat:"Toasties", name:"Cheesy Toastie", price:20, bread:true},
   {id:"toa3", cat:"Toasties", name:"Bacon & Cheese", price:30, bread:true},
   {id:"toa4", cat:"Toasties", name:"Vegan Toastie", price:30, bread:true},
-  {id:"mag0", cat:"Magwinya", name:"Magwinya (each)", price:2},
-  {id:"dri0", cat:"Drinks", name:"Drink: Coke 330ml", price:15},
-  {id:"dri1", cat:"Drinks", name:"Drink: Coke 500ml", price:20},
-  {id:"dri2", cat:"Drinks", name:"Drink: Coke 1L", price:28},
-  {id:"dri3", cat:"Drinks", name:"Drink: Coke 2L", price:38},
-  {id:"dri4", cat:"Drinks", name:"Drink: Fanta Orange 330ml", price:15},
-  {id:"dri5", cat:"Drinks", name:"Drink: Fanta Orange 500ml", price:20},
-  {id:"dri6", cat:"Drinks", name:"Drink: Fanta Orange 1L", price:28},
-  {id:"dri7", cat:"Drinks", name:"Drink: Fanta Orange 2L", price:38},
-  {id:"dri8", cat:"Drinks", name:"Drink: Sprite 330ml", price:15},
-  {id:"dri9", cat:"Drinks", name:"Drink: Sprite 500ml", price:20},
-  {id:"dri10", cat:"Drinks", name:"Drink: Sprite 1L", price:28},
-  {id:"dri11", cat:"Drinks", name:"Drink: Sprite 2L", price:38},
-  {id:"dri12", cat:"Drinks", name:"Drink: Water", price:10},
+  {id:"mag0", cat:"Magwinya", grp:"Magwinya (each)", name:"Magwinya (each)", price:2},
+  {id:"dri0", cat:"Drinks", grp:"Coke", size:"330ml", name:"Drink: Coke 330ml", price:15},
+  {id:"dri1", cat:"Drinks", grp:"Coke", size:"500ml", name:"Drink: Coke 500ml", price:20},
+  {id:"dri2", cat:"Drinks", grp:"Coke", size:"1 litre", name:"Drink: Coke 1L", price:28},
+  {id:"dri3", cat:"Drinks", grp:"Coke", size:"2 litre", name:"Drink: Coke 2L", price:38},
+  {id:"dri4", cat:"Drinks", grp:"Fanta Orange", size:"330ml", name:"Drink: Fanta Orange 330ml", price:15},
+  {id:"dri5", cat:"Drinks", grp:"Fanta Orange", size:"500ml", name:"Drink: Fanta Orange 500ml", price:20},
+  {id:"dri6", cat:"Drinks", grp:"Fanta Orange", size:"1 litre", name:"Drink: Fanta Orange 1L", price:28},
+  {id:"dri7", cat:"Drinks", grp:"Fanta Orange", size:"2 litre", name:"Drink: Fanta Orange 2L", price:38},
+  {id:"dri8", cat:"Drinks", grp:"Sprite", size:"330ml", name:"Drink: Sprite 330ml", price:15},
+  {id:"dri9", cat:"Drinks", grp:"Sprite", size:"500ml", name:"Drink: Sprite 500ml", price:20},
+  {id:"dri10", cat:"Drinks", grp:"Sprite", size:"1 litre", name:"Drink: Sprite 1L", price:28},
+  {id:"dri11", cat:"Drinks", grp:"Sprite", size:"2 litre", name:"Drink: Sprite 2L", price:38},
+  {id:"dri12", cat:"Drinks", grp:"Water", name:"Drink: Water", price:10},
+  {id:"smo0", cat:"Smoothies", grp:"Strawberry smoothie", size:"350ml", name:"Smoothie: Strawberry smoothie 350ml", price:45},
+  {id:"smo1", cat:"Smoothies", grp:"Strawberry smoothie", size:"500ml", name:"Smoothie: Strawberry smoothie 500ml", price:55},
+  {id:"smo2", cat:"Smoothies", grp:"Peanut butter & banana", size:"350ml", name:"Smoothie: Peanut butter & banana 350ml", price:50},
+  {id:"smo3", cat:"Smoothies", grp:"Peanut butter & banana", size:"500ml", name:"Smoothie: Peanut butter & banana 500ml", price:60},
+  {id:"smo4", cat:"Smoothies", grp:"Blueberry smoothie", size:"350ml", name:"Smoothie: Blueberry smoothie 350ml", price:55},
+  {id:"smo5", cat:"Smoothies", grp:"Blueberry smoothie", size:"500ml", name:"Smoothie: Blueberry smoothie 500ml", price:65},
+  {id:"smo6", cat:"Smoothies", grp:"Strawberry & banana", size:"350ml", name:"Smoothie: Strawberry & banana 350ml", price:45},
+  {id:"smo7", cat:"Smoothies", grp:"Strawberry & banana", size:"500ml", name:"Smoothie: Strawberry & banana 500ml", price:55},
+  {id:"smo8", cat:"Smoothies", grp:"Mixed berry smoothie", size:"350ml", name:"Smoothie: Mixed berry smoothie 350ml", price:55},
+  {id:"smo9", cat:"Smoothies", grp:"Mixed berry smoothie", size:"500ml", name:"Smoothie: Mixed berry smoothie 500ml", price:65},
+  {id:"smo10", cat:"Smoothies", grp:"Mango & apple smoothie", size:"350ml", name:"Smoothie: Mango & apple smoothie 350ml", price:45},
+  {id:"smo11", cat:"Smoothies", grp:"Mango & apple smoothie", size:"500ml", name:"Smoothie: Mango & apple smoothie 500ml", price:55},
+  {id:"smo12", cat:"Smoothies", grp:"Coconut butter smoothie", size:"350ml", name:"Smoothie: Coconut butter smoothie 350ml", price:50},
+  {id:"smo13", cat:"Smoothies", grp:"Coconut butter smoothie", size:"500ml", name:"Smoothie: Coconut butter smoothie 500ml", price:55},
+  {id:"mil0", cat:"Milkshakes", grp:"Blueberry", size:"350ml", name:"Milkshake: Blueberry 350ml", price:40},
+  {id:"mil1", cat:"Milkshakes", grp:"Blueberry", size:"500ml", name:"Milkshake: Blueberry 500ml", price:50},
+  {id:"mil2", cat:"Milkshakes", grp:"Strawberry", size:"350ml", name:"Milkshake: Strawberry 350ml", price:40},
+  {id:"mil3", cat:"Milkshakes", grp:"Strawberry", size:"500ml", name:"Milkshake: Strawberry 500ml", price:50},
+  {id:"mil4", cat:"Milkshakes", grp:"Lime", size:"350ml", name:"Milkshake: Lime 350ml", price:40},
+  {id:"mil5", cat:"Milkshakes", grp:"Lime", size:"500ml", name:"Milkshake: Lime 500ml", price:50},
+  {id:"mil6", cat:"Milkshakes", grp:"Chocolate", size:"350ml", name:"Milkshake: Chocolate 350ml", price:40},
+  {id:"mil7", cat:"Milkshakes", grp:"Chocolate", size:"500ml", name:"Milkshake: Chocolate 500ml", price:50},
+  {id:"mil8", cat:"Milkshakes", grp:"Bubblegum", size:"350ml", name:"Milkshake: Bubblegum 350ml", price:40},
+  {id:"mil9", cat:"Milkshakes", grp:"Bubblegum", size:"500ml", name:"Milkshake: Bubblegum 500ml", price:50},
+  {id:"coo0", cat:"Coolers", grp:"Lemonade & mint", size:"350ml", name:"Cooler: Lemonade & mint 350ml", price:35},
+  {id:"coo1", cat:"Coolers", grp:"Lemonade & mint", size:"500ml", name:"Cooler: Lemonade & mint 500ml", price:45},
+  {id:"coo2", cat:"Coolers", grp:"Granadilla", size:"350ml", name:"Cooler: Granadilla 350ml", price:35},
+  {id:"coo3", cat:"Coolers", grp:"Granadilla", size:"500ml", name:"Cooler: Granadilla 500ml", price:45},
+  {id:"coo4", cat:"Coolers", grp:"Raspberry", size:"350ml", name:"Cooler: Raspberry 350ml", price:35},
+  {id:"coo5", cat:"Coolers", grp:"Raspberry", size:"500ml", name:"Cooler: Raspberry 500ml", price:45},
+  {id:"coo6", cat:"Coolers", grp:"Strawberry", size:"350ml", name:"Cooler: Strawberry 350ml", price:35},
+  {id:"coo7", cat:"Coolers", grp:"Strawberry", size:"500ml", name:"Cooler: Strawberry 500ml", price:45},
+  {id:"coo8", cat:"Coolers", grp:"Passion fruit", size:"350ml", name:"Cooler: Passion fruit 350ml", price:35},
+  {id:"coo9", cat:"Coolers", grp:"Passion fruit", size:"500ml", name:"Cooler: Passion fruit 500ml", price:45},
 ];
 // ==================================================
 
@@ -233,7 +355,7 @@ function show(v){
   if(v !== "summary"){ unlocked = false; applyLock(); }
   document.querySelectorAll("main").forEach(m => m.classList.toggle("on", m.id === v));
   document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
-  location.hash = v;
+  location.hash = v; document.body.dataset.view = v;
 }
 document.querySelectorAll("nav button").forEach(b => b.onclick = () => show(b.dataset.v));
 show(["order","kitchen","online","display","summary"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "order");
@@ -242,45 +364,88 @@ show(["order","kitchen","online","display","summary"].includes(location.hash.sli
 const KITCHEN_PREFIX = {Croissants:"Croissant", Toasties:"Toastie", Savoury:"Savoury"};
 const kname = d => { const p = KITCHEN_PREFIX[d.cat]; return p && !d.name.toLowerCase().includes(p.toLowerCase()) ? p + ", " + d.name : d.name; };
 const info = k => { const [id, br] = k.split("|"); const d = MENU.find(m => m.id === id); return {d, name: kname(d) + (br ? " (" + br + ")" : "")}; };
-let bread = "Brown";
-$("menu").innerHTML = [...new Set(MENU.map(d => d.cat))].map(c => {
-  const items = MENU.filter(d => d.cat === c);
-  const tg = items.some(d => d.bread) ? `<div class="bread">Bread: <button data-b="Brown" class="on">Brown</button><button data-b="White">White</button></div>` : "";
-  return `<h3 class="cat">${c}</h3>${tg}<div class="grid">` + items.map(d =>
-    `<button class="dish" data-id="${d.id}"><b>${d.name}</b><span>${R(d.price)}</span></button>`).join("") + `</div>`;
-}).join("");
+let bread = "Brown", soldout = {};
+const CATS = [...new Set(MENU.map(d => d.cat))];
+let curCat = CATS[0];
+const catCount = c => Object.keys(cart).reduce((s, k) => s + (info(k).d.cat === c ? cart[k] : 0), 0);
+function drawCats(){
+  $("cats").innerHTML = CATS.map(c => { const n = catCount(c);
+    return `<button data-c="${c}" class="${c === curCat ? "on" : ""}">${c}${n ? `<i>${n}</i>` : ""}</button>`; }).join("");
+}
+function drawMenu(){
+  drawCats();
+  const items = MENU.filter(d => d.cat === curCat);
+  const tg = items.some(d => d.bread) ? `<div class="bread">Bread: <button data-b="Brown" class="${bread === "Brown" ? "on" : ""}">Brown</button><button data-b="White" class="${bread === "White" ? "on" : ""}">White</button></div>` : "";
+  const btn = (d, label) => `<button class="dish${d.bread ? " bd" : ""}" data-id="${d.id}"><b>${esc(label)}</b><span>${R(d.price)}</span></button>`;
+  const seen = new Set(), tiles = [];
+  items.forEach(d => {
+    if(!d.size){ tiles.push(btn(d, d.grp || d.name)); return; }
+    if(seen.has(d.grp)) return; seen.add(d.grp);
+    tiles.push(`<div class="dgroup"><h4>${esc(d.grp)}</h4><div class="sizes">${items.filter(x => x.grp === d.grp).map(x => btn(x, x.size)).join("")}</div></div>`);
+  });
+  $("menu").innerHTML = `<h2 class="catname">${esc(curCat)}</h2>${tg}<div class="grid">${tiles.join("")}</div>`;
+  drawSold();
+}
+$("cats").onclick = e => { const b = e.target.closest("[data-c]"); if(!b) return; curCat = b.dataset.c; drawMenu(); };
 $("menu").onclick = e => {
   const t = e.target.closest("[data-b]");
   if(t){ bread = t.dataset.b; document.querySelectorAll(".bread button").forEach(x => x.classList.toggle("on", x === t)); return; }
-  const b = e.target.closest(".dish"); if(!b) return;
+  const b = e.target.closest(".dish"); if(!b || b.disabled) return;
   const d = MENU.find(m => m.id === b.dataset.id), k = d.bread ? d.id + "|" + bread : d.id;
   cart[k] = (cart[k] || 0) + 1; drawCart();
+  b.classList.add("added"); setTimeout(() => b.classList.remove("added"), 250);
+  try{ navigator.vibrate && navigator.vibrate(15); }catch(x){}
 };
 function drawCart(){
   const ids = Object.keys(cart);
   $("cart").innerHTML = ids.length ? ids.map(id => {
-    return `<div class="row"><span>${info(id).name}</span><span class="qty">
+    return `<div class="row"><span>${esc(info(id).name)}</span><span class="qty">
       <button data-id="${id}" data-d="-1">−</button> <b>${cart[id]}</b> <button data-id="${id}" data-d="1">+</button></span></div>`;
   }).join("") : `<div class="empty">Tap a dish to add it.</div>`;
-  const total = ids.reduce((s,id) => s + cart[id] * info(id).d.price, 0);
+  const total = ids.reduce((s,id) => s + cart[id] * info(id).d.price, 0), count = ids.reduce((s,id) => s + cart[id], 0);
   $("ctotal").textContent = money(total);
   $("send").disabled = !ids.length || !slip;
-  $("send").textContent = slip ? "Send to kitchen (slip " + slip + ")" : "Pick a slip number";
+  $("send").textContent = !ids.length ? "Send to kitchen" : slip ? "Send to kitchen (slip " + slip + ")" : "Pick a slip number";
+  $("clear").hidden = !ids.length;
+  document.body.classList.toggle("hascart", ids.length > 0);
+  $("cbinfo").innerHTML = `<b>${count}</b> item${count === 1 ? "" : "s"} · <b>${money(total)}</b>`;
+  drawCats();
 }
 $("cart").onclick = e => {
   const b = e.target.closest("button"); if(!b) return;
   const id = b.dataset.id; cart[id] += +b.dataset.d;
   if(cart[id] <= 0) delete cart[id]; drawCart();
 };
+$("clear").onclick = () => { if(confirm("Clear this order?")){ cart = {}; drawCart(); } };
+$("cbgo").onclick = () => $("cartpanel").scrollIntoView({behavior:"smooth", block:"start"});
 let slip = null;
 const usedSlips = () => new Set(Object.values(orders).filter(o => o.status !== "served" && o.status !== "cancelled" && o.slip).map(o => o.slip));
+const slipButtons = (u, sel) => Array.from({length:30}, (_, i) => i + 1).map(n =>
+  `<button data-n="${n}" class="${n === sel ? "on" : ""}" ${u.has(n) ? "disabled" : ""}>${n}</button>`).join("");
 function drawSlips(){
   const u = usedSlips(); if(slip && u.has(slip)) slip = null;
-  $("slips").innerHTML = Array.from({length:30}, (_, i) => i + 1).map(n =>
-    `<button data-n="${n}" class="${n === slip ? "on" : ""}" ${u.has(n) ? "disabled" : ""}>${n}</button>`).join("");
+  $("slips").innerHTML = slipButtons(u, slip);
   drawCart();
 }
-$("slips").onclick = e => { const b = e.target.closest("button"); if(!b) return; slip = +b.dataset.n; drawSlips(); };
+$("slips").onclick = e => { const b = e.target.closest("button"); if(!b || b.disabled) return; slip = +b.dataset.n; drawSlips(); };
+// pop-up that asks for a slip number (used when an online order goes to the kitchen)
+function pickSlip(title, sub){
+  return new Promise(res => {
+    const u = usedSlips(); let sel = 1; while(u.has(sel) && sel < 30) sel++;
+    const m = document.createElement("div"); m.className = "modal";
+    m.innerHTML = `<div class="box"><h3>${esc(title)}</h3><p>${esc(sub)}</p><div class="slips" id="mslips"></div>
+      <button class="big" id="mok">Send to kitchen</button><button class="cancel" id="mno">Cancel</button></div>`;
+    document.body.appendChild(m);
+    const draw = () => { m.querySelector("#mslips").innerHTML = slipButtons(u, sel); };
+    const done = v => { m.remove(); res(v); };
+    draw();
+    m.querySelector("#mslips").onclick = e => { const b = e.target.closest("button"); if(!b || b.disabled) return; sel = +b.dataset.n; draw(); };
+    m.querySelector("#mok").onclick = () => done(sel);
+    m.querySelector("#mno").onclick = () => done(null);
+    m.onclick = e => { if(e.target === m) done(null); };
+  });
+}
+drawMenu();
 drawSlips();
 
 // ----- send order -----
@@ -322,7 +487,6 @@ $("unlock").onclick = tryUnlock;
 $("pin").onkeydown = e => { if(e.key === "Enter") tryUnlock(); };
 
 // ----- sold out -----
-let soldout = {};
 function startSold(){ db.ref("soldout").on("value", sn => { soldout = sn.val() || {}; drawSold(); publishSold(); }); }
 // copy of the sold-out list for the website to read, keyed by dish name
 let lastPublicSold = null;
@@ -334,17 +498,28 @@ function publishSold(){
   lastPublicSold = str;
   db.ref("soldoutPublic").set(Object.keys(pub).length ? pub : null).catch(() => { lastPublicSold = null; });
 }
+// kitchen "out of stock" buttons: one per dish, grouped by category. A drink/smoothie with sizes is one button for all its sizes.
+function stockGroups(c){ const seen = new Set(), out = [];
+  MENU.filter(d => d.cat === c).forEach(d => {
+    const key = d.size ? d.grp : d.id; if(seen.has(key)) return; seen.add(key);
+    const ids = MENU.filter(x => d.size ? x.grp === d.grp && x.cat === c : x.id === d.id).map(x => x.id);
+    out.push({label: d.size || d.grp ? d.grp || d.name : d.name, ids});
+  }); return out; }
 function drawSold(){
   document.querySelectorAll(".dish").forEach(b => {
     const so = !!soldout[b.dataset.id]; b.disabled = so; b.classList.toggle("so", so);
     b.querySelector("span").textContent = so ? "SOLD OUT" : R(MENU.find(m => m.id === b.dataset.id).price);
   });
-  $("stock").innerHTML = MENU.map(d =>
-    `<button class="chipbtn ${soldout[d.id] ? "off" : ""}" data-id="${d.id}">${d.name}${soldout[d.id] ? " — SOLD OUT" : ""}</button>`).join("");
+  $("stock").innerHTML = CATS.map(c => `<div class="stocktitle">${esc(c)}</div><div class="stock">` + stockGroups(c).map(g => {
+    const n = g.ids.filter(id => soldout[id]).length, all = n === g.ids.length;
+    return `<button class="chipbtn ${all ? "off" : n ? "part" : ""}" data-ids="${g.ids.join(",")}">${esc(g.label)}${all ? " — SOLD OUT" : n ? " — some sizes out" : ""}</button>`;
+  }).join("") + `</div>`).join("");
 }
 $("stock").onclick = e => {
   const b = e.target.closest("button"); if(!b) return;
-  db.ref("soldout/" + b.dataset.id).set(soldout[b.dataset.id] ? null : true);
+  const ids = b.dataset.ids.split(","), allOut = ids.every(id => soldout[id]), up = {};
+  ids.forEach(id => up[id] = allOut ? null : true);
+  db.ref("soldout").update(up);
 };
 
 // ----- chef animation: a little 3D chef pushes the number from Preparing to Ready -----
@@ -435,7 +610,7 @@ async function play(n, src, hooks){
 
   const ch = buildChef(); sc.add(ch.root, ch.shadow);
   const say = document.createElement("div"); say.className = "say"; say.style.opacity = 0; document.body.appendChild(say);
-  let last = ""; const speak = t => { if(t === last) return; last = t; say.textContent = t; say.style.opacity = t ? 1 : 0; if(t) say.animate([{scale: ".6"}, {scale: "1"}], {duration: 200}); };
+  let last = ""; const speak = t => { };   // speech bubbles switched off
 
   // shove timeline: burst forward, slip back a little, repeat
   const S = 6, dur = Math.min(5.6, 3.6 + len * .0015 * 1000 / 1000), kf = [];
@@ -505,99 +680,6 @@ async function play(n, src, hooks){
 }
 
 
-async function collect(n, src, hooks){
-  let rd; try{ rd = new THREE.WebGLRenderer({alpha: true, antialias: true}); }catch(e){ rd = null; }
-  if(!rd){ hooks.setup(); hooks.finish(); return; }
-  const a = src.getBoundingClientRect(); hooks.setup();
-  const W = innerWidth, H = innerHeight, k = .9;
-  rd.setPixelRatio(Math.min(devicePixelRatio, 2)); rd.setSize(W, H);
-  Object.assign(rd.domElement.style, {position: "fixed", top: 0, left: 0, zIndex: 60, pointerEvents: "none"});
-  document.body.appendChild(rd.domElement);
-  const sc = new THREE.Scene(), cam = new THREE.PerspectiveCamera(10, W / H, 10, 40000);
-  cam.position.z = (H / 2) / Math.tan(5 * Math.PI / 180);
-  sc.add(new THREE.AmbientLight(0xffffff, .72)); const dl = new THREE.DirectionalLight(0xffffff, .5); dl.position.set(-250, 350, 500); sc.add(dl);
-
-  // the number card as a 3D slab (colours copied from the real card)
-  const cs = getComputedStyle(src), cv = document.createElement("canvas"); cv.width = 512; cv.height = Math.round(512 * a.height / a.width);
-  const cg = cv.getContext("2d"); cg.fillStyle = cs.backgroundColor; cg.beginPath(); cg.roundRect(0, 0, cv.width, cv.height, cv.width * .08); cg.fill();
-  cg.fillStyle = cs.color; cg.font = `800 ${cv.height * .62}px system-ui,sans-serif`; cg.textAlign = "center"; cg.textBaseline = "middle"; cg.fillText(n, cv.width / 2, cv.height * .54);
-  const side = mat(0x1d7a50), chip = new THREE.Mesh(new THREE.BoxGeometry(a.width, a.height, 40), [side, side, side, side, new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(cv)}), side]);
-  sc.add(chip);
-
-  // chef stands on the side of the card nearest a screen edge and pulls the card off that edge
-  const cx0 = a.left + a.width / 2 - W / 2, cy = H / 2 - (a.top + a.height / 2), clampX = x => Math.max(-W / 2 + 70, Math.min(W / 2 - 70, x));
-  const gap = q => Math.abs(clampX(cx0 + q * (a.width / 2 + 300)) - (cx0 + q * a.width / 2));
-  let s = cx0 >= 0 ? 1 : -1; if(gap(s) < 200) s = -s;
-  const f = -s, stand = clampX(cx0 + s * (a.width / 2 + 300));
-
-  const ch = buildChef(); sc.add(ch.root, ch.shadow);
-  const tw = r => { const c = document.createElement("canvas"); c.width = c.height = 32; const x = c.getContext("2d"); x.fillStyle = "#c89b5a"; x.fillRect(0, 0, 32, 32); x.strokeStyle = "#7a5526"; x.lineWidth = 5; for(let i = -2; i < 3; i++){ x.beginPath(); x.moveTo(i * 16, 0); x.lineTo(i * 16 + 32, 32); x.stroke(); } const T = new THREE.CanvasTexture(c); T.wrapS = T.wrapT = THREE.RepeatWrapping; T.repeat.set(r, 1); return T; };
-  const ropeT = tw(10), ropeM = new THREE.MeshLambertMaterial({map: ropeT}), ringM = new THREE.MeshLambertMaterial({map: tw(34)}), hand = new THREE.Object3D(); hand.position.y = -24; ch.armL.el.add(hand);
-  const coil = new THREE.Mesh(new THREE.TorusGeometry(7, 2.6, 8, 16), ringM); hand.add(coil);
-  const hy = a.height / 2 + 5, hz = 25, ring = new THREE.Group(), rm = new THREE.Group(), knot = new THREE.Mesh(new THREE.CylinderGeometry(5.5, 4.5, 14, 12), ringM);
-  const lp = Array.from({length: 36}, (_, i) => { const q = i / 36 * Math.PI * 2; return new THREE.Vector3(0, hy * Math.cos(q), hz * Math.sin(q)); });
-  rm.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(lp, true), 72, 3, 8, true), ringM));
-  knot.position.y = hy; knot.rotation.z = Math.PI / 2; rm.add(knot); ring.add(rm); ring.visible = false; sc.add(ring);
-  let rope = null; const V = (x, y, z) => new THREE.Vector3(x, y, z), P = V(0, 0, 0), H0 = V(0, 0, 0), E = V(0, 0, 0), K = V(0, 0, 0);
-  const drawRope = (p0, p1, sag) => { if(rope){ sc.remove(rope); rope.geometry.dispose(); }
-    const m = p0.clone().add(p1).multiplyScalar(.5); m.y -= sag; ropeT.repeat.set(p0.distanceTo(p1) * 1.05 / 12, 1);
-    rope = new THREE.Mesh(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(p0.clone(), m, p1.clone()), 24, 2.6, 6), ropeM); sc.add(rope); };
-  const say = document.createElement("div"); say.className = "say"; say.style.opacity = 0; document.body.appendChild(say);
-  let last = ""; const speak = t => { if(t === last) return; last = t; say.textContent = t; say.style.opacity = t ? 1 : 0; if(t) say.animate([{scale: ".6"}, {scale: "1"}], {duration: 200}); };
-  const puff = (sx, sy) => { const p = document.createElement("div"), z = 8 + Math.random() * 12; p.className = "puff";
-    Object.assign(p.style, {width: z + "px", height: z + "px", left: sx - z / 2 + "px", top: sy + "px"}); document.body.appendChild(p);
-    p.animate([{opacity: .7, transform: "scale(.6)"}, {opacity: 0, transform: `translate(${-f * 14}px,-12px) scale(1.8)`}], {duration: 600}).finished.then(() => p.remove()); };
-
-  // timeline: walk in, wind up, throw, rope flies, lasso lands, brace, then walk backwards pulling the card off the edge
-  const Din = W / 2 + 80 - stand * s, T0 = Math.min(2.4, Din / 190), TW = .7, TT = .3, TF = .5, TL = .6;
-  const Dc = W / 2 + a.width / 2 + 40 - cx0 * s, Tp = Math.max(3.2, Math.min(5.6, Dc / 170));
-  const t1 = T0, t2 = t1 + TW, t3 = t2 + TT, t4 = t3 + TF, t5 = t4 + TL, tEnd = t5 + Tp;
-  const swv = .5 * Math.sin(2 * Math.PI * Din / 50), msgOrder = `Order ${n} was collected!`;
-  let gotH = false, lastPuff = 0; const t0 = performance.now();
-
-  await new Promise(done => {
-    (function tick(now){
-      const t = (now - t0) / 1000;
-      if(t > tEnd){ say.remove(); if(rope) rope.geometry.dispose(); rd.domElement.remove(); rd.dispose(); hooks.finish(); return done(); }
-      let rootX = stand, gt = Din / 50, lean = 0, aL = 0, aR = 0, eL = 0, pw = 0, strain = 0, cardX = cx0, rot = 0, msg = "", fu = -1, taut = 0, dist = 0;
-      if(t < t1){ const u = sm(t / t1), d = Din * (1 - Math.pow(1 - u, 1.6)); rootX = stand + s * (Din - d); gt = d / 50; aL = .5 * Math.sin(2 * Math.PI * gt); aR = -aL; }
-      else if(t < t2){ const u = smooth(sm((t - t1) / TW)); pw = smooth(sm((t - t1) / .25)); aL = swv * (1 - u) + .9 * u; aR = -swv * (1 - u); lean = -.05 * u; msg = msgOrder; }
-      else if(t < t3){ const u = sm((t - t2) / TT); pw = 1; aL = .9 - 2.8 * ease(u); lean = -.05 + .2 * smooth(u); msg = msgOrder; }
-      else if(t < t4){ const u = sm((t - t3) / TF); pw = 1; fu = u; aL = -1.9 + .5 * smooth(sm(u * 2)); lean = .15 - .2 * smooth(u); }
-      else if(t < t5){ const u = smooth(sm((t - t4) / TL)); pw = 1; fu = 2; taut = u; aL = -1.4 + .25 * u; aR = -u; eL = -.3 * u; lean = -.05 - .25 * u; strain = u; msg = "Gotcha!"; rot = .07 * Math.sin(t * 38) * (1 - u); }
-      else { const x = sm((t - t5) / Tp), u = Math.pow(x, 1.4), env = sm(x * 5), wob = Math.sin(2 * Math.PI * 7 * u) * env;
-        dist = Dc * Math.max(0, u + .035 * wob); rootX = stand + s * dist; gt = Din / 50 - dist / 50; cardX = cx0 + s * dist; pw = 1 - smooth(sm((t - t5) / .3));
-        fu = 2; taut = 1; strain = 1; aL = -1.15; aR = -1; eL = -.3; lean = -.3; rot = -s * .06 * wob;
-        msg = x < .3 ? "Heave…!" : x < .65 ? "Clearing it off…" : "Enjoy your meal!";
-        if(now - lastPuff > 150){ lastPuff = now; puff(rootX + W / 2 + s * 40, H / 2 - (cy - 105 * k) + 6); } }
-      speak(msg);
-
-      const R = ch.root, hip = 74, zc = Math.max(0, -lean) * 30;
-      R.position.set(rootX, cy - 105 * k, 0); R.scale.set(f * k, k, k);
-      ch.shadow.position.set(rootX, R.position.y - 2, -20); ch.shadow.scale.set(1, .22, 1);
-      ch.spine.position.y = hip; ch.spine.rotation.x = lean; ch.head.rotation.x = -lean * .7; ch.head.rotation.z = Math.sin(t * 28) * .05 * strain;
-      ch.armL.g.rotation.x = aL - lean; ch.armR.g.rotation.x = aR - lean; ch.armL.el.rotation.x = eL; ch.armR.el.rotation.x = eL * .8;
-      const fa = foot(gt, zc), fb = foot(gt + .5, zc), mix = (x, y) => x + (y - x) * pw;
-      ch.legL.h.position.y = ch.legR.h.position.y = hip;
-      legIK(ch.legL, mix(fa.z, 3), 8.5 + mix(fa.y, 0) - hip); legIK(ch.legR, mix(fb.z, -9), 8.5 + mix(fb.y, 0) - hip);
-      ch.sw.forEach((q, i) => { const u = (t * 1.2 + i / 3) % 1; q.visible = strain > .3; q.position.set((i === 1 ? 19 : -19) + (i - 1) * 2, 32 - u * 30, 6 - u * 20); q.scale.setScalar(1 - u * .6); });
-      chip.position.set(cardX, cy, 0); chip.rotation.z = rot;
-
-      coil.visible = t < t3; hand.getWorldPosition(P);
-      if(fu >= 0){
-        if(!gotH){ gotH = true; H0.copy(P); }
-        const A = V(cardX + s * (a.width / 2 - 8), cy, 0); ring.visible = true;
-        if(fu <= 1){ E.copy(H0).lerp(A, ease(fu)); E.y += 45 * Math.sin(Math.PI * fu); ring.position.copy(E); ring.rotation.set(0, 0, .25 * Math.sin(fu * 9)); rm.rotation.y = 1.1 - .8 * fu; ring.scale.setScalar(1.5); }
-        else { ring.position.copy(A); ring.rotation.set(0, 0, rot); rm.rotation.y = .3; ring.scale.setScalar(1.5 - .5 * Math.min(1, (t - t4) / .25)); }
-        ring.updateMatrixWorld(true); knot.getWorldPosition(K); drawRope(P, K, fu <= 1 ? 30 - 20 * fu : 40 * (1 - taut));
-      }
-      const hp = ch.head.getWorldPosition(V(0, 0, 0));
-      say.style.left = hp.x + W / 2 + "px"; say.style.top = H / 2 - hp.y - 70 * k + "px";
-      rd.render(sc, cam); requestAnimationFrame(tick);
-    })(t0);
-  });
-}
-
 async function bring(n, src, hooks){
   let rd; try{ rd = new THREE.WebGLRenderer({alpha: true, antialias: true}); }catch(e){ rd = null; }
   if(!rd){ hooks.setup(); hooks.land(); return; }
@@ -634,7 +716,7 @@ async function bring(n, src, hooks){
     const m = p0.clone().add(p1).multiplyScalar(.5); m.y -= sag; ropeT.repeat.set(p0.distanceTo(p1) * 1.05 / 12, 1);
     rope = new THREE.Mesh(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(p0.clone(), m, p1.clone()), 24, 2.6, 6), ropeM); sc.add(rope); };
   const say = document.createElement("div"); say.className = "say"; say.style.opacity = 0; document.body.appendChild(say);
-  let last = ""; const speak = t => { if(t === last) return; last = t; say.textContent = t; say.style.opacity = t ? 1 : 0; if(t) say.animate([{scale: ".6"}, {scale: "1"}], {duration: 200}); };
+  let last = ""; const speak = t => { };   // speech bubbles switched off
   const puff = (sx, sy) => { const p = document.createElement("div"), z = 8 + Math.random() * 12; p.className = "puff";
     Object.assign(p.style, {width: z + "px", height: z + "px", left: sx - z / 2 + "px", top: sy + "px"}); document.body.appendChild(p);
     p.animate([{opacity: .7, transform: "scale(.6)"}, {opacity: 0, transform: `translate(${-f * 14}px,-12px) scale(1.8)`}], {duration: 600}).finished.then(() => p.remove()); };
@@ -684,7 +766,7 @@ async function bring(n, src, hooks){
   });
 }
 
-window.chefPlay = play; window.chefBring = bring; window.chefCollect = collect;
+window.chefPlay = play; window.chefBring = bring;
 })();
 
 // ----- live data -----
@@ -712,9 +794,9 @@ let dispList = [], dispPrev = null, chefQ = [], chefBusy = false, hideReady = nu
 const dnum = o => o.slip || o.num;
 function renderDisplay(){
   const f = pick => dispList.filter(pick).sort((a, b) => a.createdAt - b.createdAt)
-    .map(o => `<span class="bn" data-n="${dnum(o)}"${(hideReady === dnum(o) && o.status === "ready") || (hideIn === dnum(o) && o.status === "new") || (outN === dnum(o) && o.status === "served") ? ' style="visibility:hidden"' : ""}>${dnum(o)}</span>`).join("") || `<span class="empty">—</span>`;
+    .map(o => `<span class="bn" data-n="${dnum(o)}"${(hideReady === dnum(o) && o.status === "ready") || (hideIn === dnum(o) && o.status === "new") ? ' style="visibility:hidden"' : ""}>${dnum(o)}</span>`).join("") || `<span class="empty">—</span>`;
   $("d-prep").innerHTML = f(o => o.status === "new" || (o.status === "ready" && holding.has(dnum(o))));
-  $("d-ready").innerHTML = f(o => (o.status === "ready" && !holding.has(dnum(o))) || (o.status === "served" && outN === dnum(o)));
+  $("d-ready").innerHTML = f(o => (o.status === "ready" && !holding.has(dnum(o))));
 }
 function drawDisplay(list){
   dispList = list;
@@ -723,7 +805,6 @@ function drawDisplay(list){
     const by = p => list.filter(p).sort((a, b) => a.createdAt - b.createdAt)[0];       // only when the chef is free, so no order is ever delayed
     let o, t;
     if(o = by(o => o.status === "ready" && prev[o.k] === "new")){ t = "push"; holding.add(dnum(o)); }                                  // Preparing -> Ready
-    else if(o = by(o => o.status === "served" && prev[o.k] === "ready")){ t = "out"; outN = dnum(o); }                                 // collected: lasso it off Ready
     else if(o = by(o => o.status === "new" && prev[o.k] === undefined && Date.now() - o.createdAt < 60000)){ t = "in"; hideIn = dnum(o); }  // new order: drag it into Preparing
     if(t) chefQ.push({t, n: dnum(o)});
   }
@@ -732,14 +813,13 @@ function drawDisplay(list){
 async function runChef(){
   chefBusy = true;
   while(chefQ.length){
-    const {t, n} = chefQ.shift(), src = document.querySelector(`#${t === "out" ? "d-ready" : "d-prep"} .bn[data-n="${n}"]`);
+    const {t, n} = chefQ.shift(), src = document.querySelector(`#d-prep .bn[data-n="${n}"]`);
     try{
       if(!src) throw 0;
       if(t === "push") await window.chefPlay(n, src, {
         setup(){ holding.delete(n); hideReady = n; renderDisplay(); const c = document.querySelector(`#d-ready .bn[data-n="${n}"]`); return (c || src).getBoundingClientRect(); },
         land(){ hideReady = null; renderDisplay(); const c = document.querySelector(`#d-ready .bn[data-n="${n}"]`); if(c) c.classList.add("pop"); }
       });
-      else if(t === "out") await window.chefCollect(n, src, {setup(){}, finish(){ outN = null; renderDisplay(); }});
       else await window.chefBring(n, src, {setup(){}, land(){ hideIn = null; renderDisplay(); const c = document.querySelector(`#d-prep .bn[data-n="${n}"]`); if(c) c.classList.add("pop"); }});
     }catch(e){ console.error("chef:", e); }
     holding.delete(n); hideReady = null; hideIn = null; outN = null; renderDisplay();
@@ -747,7 +827,10 @@ async function runChef(){
   chefBusy = false;
 }
 const time = ts => new Date(ts).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
-const itemsHtml = o => "<ul>" + (o.items || []).map(i => `<li>${i.qty} × ${esc(i.name)}</li>`).join("") + "</ul>";
+const whereHtml = o => !o.online || !o.orderType ? "" : o.orderType === "delivery"
+  ? `<div class="where deliv">DELIVERY${o.address ? " · " + esc(o.address) : ""}</div>` : `<div class="where">Collection</div>`;
+const itemsHtml = o => whereHtml(o) + "<ul>" + (o.items || []).map(i => `<li>${i.qty} × ${esc(i.name)}</li>`).join("") + "</ul>";
+const payTag = o => o.online ? (o.paid ? `<span class="paidtag">PAID</span>` : `<span class="collect">Collect ${money(o.total)}</span>`) : money(o.total);
 
 function drawKitchen(list){
   const q = list.filter(o => o.status === "new").sort((a,b) => a.createdAt - b.createdAt);
@@ -764,7 +847,7 @@ let skew = 0;
 db.ref(".info/serverTimeOffset").on("value", sn => { skew = sn.val() || 0; });
 function tickAges(){
   const now = Date.now() + skew;
-  document.querySelectorAll("#queue .ticket[data-created]").forEach(t => {
+  document.querySelectorAll("#queue .ticket[data-created], #onlineq .ticket[data-created]").forEach(t => {
     const m = Math.max(0, Math.floor((now - Number(t.dataset.created)) / 60000));
     t.querySelector(".age").textContent = m < 1 ? "just now" : m + " min";
     t.classList.toggle("age-warn", m >= WARN_MIN && m < LATE_MIN);
@@ -775,9 +858,10 @@ setInterval(tickAges, 15000);
 
 function drawReady(list){
   const r = list.filter(o => o.status === "ready").sort((a,b) => a.createdAt - b.createdAt);
+  $("rcount").textContent = r.length ? "(" + r.length + ")" : "";
   $("now").innerHTML = r.length ? "Now serving: " + r.map(o => `<span class="chip">${o.slip || o.num}</span>`).join("") : "";
   $("ready").innerHTML = r.length ? r.map(o =>
-    `<div class="ticket ready" style="margin-bottom:10px"><h3><span>${tag(o)}</span><span class="t">${money(o.total)}</span></h3>
+    `<div class="ticket ready" style="margin-bottom:10px"><h3><span>${tag(o)}</span><span class="t">${payTag(o)}</span></h3>
      ${itemsHtml(o)}<button class="done" data-k="${o.k}" data-s="served">Served</button><button class="cancel" data-k="${o.k}">Cancel order</button></div>`).join("")
     : `<div class="empty">Nothing ready yet.</div>`;
 }
@@ -800,6 +884,7 @@ function drawSummary(list){
     by[i.name].q += i.qty; by[i.name].a += i.qty * i.price;
   }));
   $("s-orders").textContent = t.length;
+  $("s-online").textContent = t.filter(o => o.online).length;
   $("s-money").textContent = money(t.reduce((s,o) => s + o.total, 0));
   $("s-open").textContent = t.filter(o => o.status === "new").length;
   const fees = t.reduce((s,o) => s + (Number(o.deliveryFee) || 0), 0), feeCount = t.filter(o => Number(o.deliveryFee) > 0).length;
@@ -861,6 +946,25 @@ const onlineItems = o => Object.values(o.items || {}).map(i => {
     menu: d ? d.price : null
   };
 });
+let onlineList = [];
+const payWatch = {}, payPaid = {};          // watches /paymentStatus/<ref> for each waiting online order
+function watchPay(ref){
+  if(!ref || payWatch[ref]) return;
+  payWatch[ref] = true;
+  db.ref("paymentStatus/" + ref).on("value", sn => { const v = sn.val(); payPaid[ref] = v === "paid" || !!(v && v.status === "paid"); drawOnline(onlineList); }, () => {});
+}
+const REF_RE = /GE-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}/;
+const payInfo = o => {
+  const notes = String(o.notes || "");
+  const ref = o.ref || (notes.match(REF_RE) || [""])[0];
+  const viaPF = o.payment === "payfast" || /AWAITING PAYMENT CHECK/.test(notes) || !!o.ref;
+  return {
+    ref, viaPF,
+    test: /SANDBOX TEST/.test(notes),
+    paid: viaPF && (o.payStatus === "paid" || !!payPaid[ref]),
+    notes: notes.replace(/^AWAITING PAYMENT CHECK \([^)]*\) Ref GE-[A-Z0-9-]+\.\s*/, "")
+  };
+};
 function startOnline(){ db.ref("onlineOrders").orderByChild("status").equalTo("new").on("value", snap => {
   online = snap.val() || {};
   const list = Object.entries(online).map(([k,o]) => ({k, ...o})).filter(o => o.status === "new")
@@ -869,39 +973,69 @@ function startOnline(){ db.ref("onlineOrders").orderByChild("status").equalTo("n
   lastOnlineNew = list.length; onlineLoaded = true;
   $("ocount").textContent = list.length ? "(" + list.length + ")" : "";
   document.querySelector('nav button[data-v="online"]').classList.toggle("pulse", list.length > 0);
+  list.forEach(o => watchPay(payInfo(o).ref));
   drawOnline(list);
 }, err => { console.error("online orders:", err.message); }); }
 function drawOnline(list){
+  onlineList = list;
   $("onlineq").innerHTML = list.length ? list.map(o => {
-    const items = onlineItems(o);
-    const lis = items.map(i => `<li>${i.qty} × ${esc(i.name)}${i.menu !== null && i.menu !== i.sent ? ` <span class="flag">⚠ website R${i.sent}, menu R${i.menu}</span>` : ""}${i.menu === null ? ` <span class="flag">⚠ not on menu</span>` : ""}</li>`).join("");
-    const map = String(o.mapsLink || "").startsWith("https://www.google.com/maps") ? ` · <a href="${esc(o.mapsLink)}" target="_blank" rel="noopener">map</a>` : "";
-    return `<div class="ticket online"><h3><span class="who">${esc(o.name)}</span><span class="t">${time(o.createdAt)}</span></h3>
-      <div class="meta">📞 <a href="tel:${esc(String(o.phone).replace(/[^\d+]/g, ""))}">${esc(o.phone)}</a> · <a href="https://wa.me/${waNumber(o.phone)}" target="_blank" rel="noopener">WhatsApp</a></div>
-      <div class="meta">${esc(o.orderType)}${o.address ? " · " + esc(o.address) : ""}${map}</div>
-      ${o.notes ? `<div class="note">${esc(o.notes)}</div>` : ""}
+    const items = onlineItems(o), p = payInfo(o);
+    const lis = items.map(i => `<li>${i.qty} × ${esc(i.name)}${i.menu !== null && i.menu !== i.sent ? ` <span class="flag">Price check: website R${i.sent}, menu R${i.menu}</span>` : ""}${i.menu === null ? ` <span class="flag">Not on menu</span>` : ""}</li>`).join("");
+    const map = String(o.mapsLink || "").startsWith("https://www.google.com/maps") ? `<a href="${esc(o.mapsLink)}" target="_blank" rel="noopener">Open map</a>` : "";
+    const delivery = o.orderType === "delivery";
+    const fee = Number(o.deliveryFee) || 0;
+    const wa = "https://wa.me/" + waNumber(o.phone) + "?text=" + encodeURIComponent("Hi " + String(o.name).split(" ")[0] + ", Good Eats here. We have your order (" + money(Number(o.total) || 0) + ").");
+    const payBadge = !p.viaPF ? `<span class="pay cash">Pay on collection</span>`
+      : p.paid ? `<span class="pay paid">PAID (PayFast)</span>` : `<span class="pay wait">Awaiting payment check</span>`;
+    const payBox = p.viaPF && !p.paid ? `<div class="payline">Look for <b>${money(Number(o.total) || 0)}</b> in your PayFast dashboard with this reference:<code>${esc(p.ref || "(no reference)")}</code></div>
+      <button class="paybtn" data-k="${o.k}" data-ref="${esc(p.ref)}" ${p.ref ? "" : "disabled"}>Payment received</button>` : "";
+    const canSend = !p.viaPF || p.paid;
+    return `<div class="ticket online${p.test ? " isTest" : ""}" data-created="${o.createdAt}"><h3><span class="who">${esc(o.name)}</span><span class="t">${time(o.createdAt)} · <b class="age"></b></span></h3>
+      <div class="badges"><span class="kind">${delivery ? "Delivery" : "Collection"}</span>${payBadge}${p.test ? `<span class="pay test">TEST ORDER</span>` : ""}</div>
+      <div class="contact"><a href="tel:${esc(String(o.phone).replace(/[^\d+]/g, ""))}">Call ${esc(o.phone)}</a><a class="wa" href="${esc(wa)}" target="_blank" rel="noopener">WhatsApp</a></div>
+      ${delivery ? `<div class="addr">${esc(o.address || "")}${map ? " · " + map : ""}</div>` : ""}
+      ${p.notes ? `<div class="note">${esc(p.notes)}</div>` : ""}
       <ul>${lis}</ul>
-      <div class="meta">${Number(o.deliveryFee) ? "Delivery: " + R(Number(o.deliveryFee)) + " · " : ""}Total: <b>${money(Number(o.total) || 0)}</b> (pay on collection)</div>
-      <button class="okbtn" data-k="${o.k}">Contacted — send to kitchen</button><button class="nobtn" data-k="${o.k}">Reject</button></div>`;
+      <div class="meta">${delivery ? (fee ? "Delivery: " + R(fee) : "Free delivery") + " · " : ""}Total: <b>${money(Number(o.total) || 0)}</b>${p.viaPF ? "" : " (pay on collection)"}</div>
+      ${payBox}
+      <button class="okbtn" data-k="${o.k}" ${canSend ? "" : "disabled"}>${canSend ? "Send to kitchen" : "Confirm payment first"}</button><button class="nobtn" data-k="${o.k}">Reject</button></div>`;
   }).join("") : `<div class="empty">No online orders waiting.</div>`;
+  tickAges();
 }
 document.addEventListener("click", e => {
+  const pb = e.target.closest(".paybtn");
+  if(pb){
+    const k = pb.dataset.k, ref = pb.dataset.ref; if(!ref) return;
+    if(!confirm("Only tap OK if you can see this payment in PayFast.\n\nReference: " + ref)) return;
+    pb.disabled = true;
+    db.ref("paymentStatus/" + ref).set("paid")
+      .then(() => { payPaid[ref] = true; drawOnline(onlineList); return db.ref("onlineOrders/" + k + "/payStatus").set("paid").catch(() => {}); })
+      .catch(err => { alert("Could not confirm the payment: " + err.message + "\n\nCheck that the new Firebase rules were published."); pb.disabled = false; });
+    return;
+  }
   const no = e.target.closest(".nobtn");
-  if(no){ if(confirm("Reject this online order?")) db.ref("onlineOrders/" + no.dataset.k + "/status").set("rejected"); return; }
-  const ok = e.target.closest(".okbtn"); if(!ok) return;
+  if(no){
+    const o = online[no.dataset.k], p = o ? payInfo(o) : {};
+    const msg = p.paid ? "This order is already PAID. If you reject it you must refund the customer.\n\nReject it anyway?" : "Reject this online order?";
+    if(confirm(msg)) db.ref("onlineOrders/" + no.dataset.k + "/status").set("rejected");
+    return;
+  }
+  const ok = e.target.closest(".okbtn"); if(!ok || ok.disabled) return;
   const k = ok.dataset.k, o = online[k]; if(!o || o.status !== "new") return;
-  const used = usedSlips(); let free = 1; while(used.has(free) && free < 30) free++;
-  const ans = prompt("Slip number for this order (1-30):", free); if(ans === null) return;
-  const s = parseInt(ans, 10);
-  if(!(s >= 1 && s <= 30) || used.has(s)){ alert("Pick a free slip number from 1 to 30."); return; }
+  const p = payInfo(o); if(p.viaPF && !p.paid){ alert("Confirm the payment first."); return; }
   ok.disabled = true;
-  const items = onlineItems(o).map(i => ({id: "web", name: i.name, price: i.menu !== null ? i.menu : i.sent, qty: i.qty}));
-  const total = items.reduce((t,i) => t + i.price * i.qty, 0) + (Number(o.deliveryFee) || 0);
-  db.ref("counter/" + today()).transaction(n => (n || 0) + 1).then(r => db.ref("orders").push({
-    num: r.snapshot.val(), slip: s, items, total, deliveryFee: Number(o.deliveryFee) || 0, status: "new", online: true,
-    customerName: String(o.name).slice(0, 60), createdAt: firebase.database.ServerValue.TIMESTAMP
-  })).then(() => db.ref("onlineOrders/" + k + "/status").set("sent"))
-    .catch(err => { alert("Could not send: " + err.message); ok.disabled = false; });
+  pickSlip("Slip number for " + o.name, "Pick the slip you will hand over. Used numbers are greyed out.").then(s => {
+    if(!s){ ok.disabled = false; return; }
+    if(usedSlips().has(s)){ alert("That slip number was just taken. Pick another."); ok.disabled = false; return; }
+    const items = onlineItems(o).map(i => ({id: "web", name: i.name, price: i.menu !== null ? i.menu : i.sent, qty: i.qty}));
+    const total = items.reduce((t,i) => t + i.price * i.qty, 0) + (Number(o.deliveryFee) || 0);
+    return db.ref("counter/" + today()).transaction(n => (n || 0) + 1).then(r => db.ref("orders").push({
+      num: r.snapshot.val(), slip: s, items, total, deliveryFee: Number(o.deliveryFee) || 0, status: "new", online: true,
+      orderType: String(o.orderType || "").slice(0, 20), address: String(o.address || "").slice(0, 200), paid: !!p.paid,
+      customerName: String(o.name).slice(0, 60), createdAt: firebase.database.ServerValue.TIMESTAMP
+    })).then(() => db.ref("onlineOrders/" + k + "/status").set("sent"))
+      .catch(err => { alert("Could not send: " + err.message); ok.disabled = false; });
+  });
 });
 
 // ----- online order chime (soft rising notes, different from the kitchen beep) -----
@@ -909,15 +1043,18 @@ function chime(){
   try{
     ctx = ctx || new (window.AudioContext || window.webkitAudioContext)(); ctx.resume();
     const t = ctx.currentTime;
-    [660, 880, 1320].forEach((f, i) => {
-      const o = ctx.createOscillator(), g = ctx.createGain(), s = t + i * .18;
-      o.type = "sine"; o.frequency.value = f; o.connect(g); g.connect(ctx.destination);
-      g.gain.setValueAtTime(.0001, s); g.gain.exponentialRampToValueAtTime(.5, s + .03); g.gain.exponentialRampToValueAtTime(.0001, s + .5);
-      o.start(s); o.stop(s + .55);
-    });
+    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -12; comp.ratio.value = 6; comp.connect(ctx.destination);
+    const master = ctx.createGain(); master.gain.value = 2.2; master.connect(comp);      // overall volume: raise or lower this number
+    [0, 1.1].forEach(rep => [660, 880, 1320, 880, 1320].forEach((f, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain(), s = t + rep + i * .2;
+      o.type = "square"; o.frequency.value = f; o.connect(g); g.connect(master);
+      g.gain.setValueAtTime(.0001, s); g.gain.exponentialRampToValueAtTime(.55, s + .02); g.gain.exponentialRampToValueAtTime(.0001, s + .26);
+      o.start(s); o.stop(s + .3);
+    }));
   }catch(e){}
 }
 $("osnd").onclick = () => chime();
+$("exitfs").onclick = () => { location.hash = "order"; location.reload(); };
 
 // ----- staff login -----
 let liveStarted = false;
