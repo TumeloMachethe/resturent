@@ -141,6 +141,7 @@ nav button span{font-weight:700}
 .ticket.online .contact{display:flex;gap:8px;margin:8px 0}
 .ticket.online .contact a{flex:1;text-align:center;padding:12px 6px;border-radius:10px;background:#2a2a2a;border:1px solid var(--line);color:var(--ink);font-weight:700;text-decoration:none}
 .ticket.online .contact a.wa{background:#2a2a2a;color:var(--ink)}
+.ticket.online .contact a.drv{background:var(--green);border-color:var(--green);color:#fff}
 .ticket.online .addr{margin:4px 0 6px}
 .ticket.online .payline{margin:8px 0;padding:10px;border-radius:10px;background:#2a2410;border:1px solid var(--amber);font-size:15px}
 .ticket.online .payline code{display:block;margin-top:4px;font-size:17px;font-weight:700;color:var(--amber);letter-spacing:.03em;user-select:all}
@@ -240,11 +241,11 @@ body[data-view=display] .exitfs{display:block}
     <div id="cartpanel">
       <div class="panel">
         <div class="paneltitle"><h2>New order</h2><button class="clr" id="clear" hidden>Clear</button></div>
+        <div class="slipsrow" style="margin-top:0"><b>Slip number</b></div>
+        <div class="slips" id="slips"></div>
         <div id="cart"></div>
         <div class="total">Total: <span id="ctotal">R0</span></div>
         <input class="onote" id="onote" maxlength="80" autocomplete="off" placeholder="Note for the kitchen (no onion, extra sauce)">
-        <div class="slipsrow"><b>Slip number</b></div>
-        <div class="slips" id="slips"></div>
         <button class="big" id="send" disabled>Take payment</button>
       </div>
       <div class="paneltitle" style="margin-top:18px"><h2>Ready to serve</h2><button class="clr recall" hidden></button></div>
@@ -1114,6 +1115,9 @@ const onlineItems = o => Object.values(o.items || {}).map(i => {
     menu: d ? d.price : null
   };
 });
+// ----- delivery driver intro: change the driver's name here -----
+const DRIVER_NAME = "Tumelo";
+const driverMsg = o => "Hey " + String(o.name).split(" ")[0] + " 👋 It's " + DRIVER_NAME + " your delivery driver from Good Eats, and I'll be the one bringing your food today. The kitchen is on it right now, and the moment it's ready I'm on my way to you, straight from the pan to your door, still hot 🔥 I'm sending my live location so you can watch me coming. Anything you need, just message me here.";
 let onlineList = [];
 const payWatch = {}, payPaid = {};          // watches /paymentStatus/<ref> for each waiting online order
 function watchPay(ref){
@@ -1153,6 +1157,7 @@ function drawOnline(list){
     const delivery = o.orderType === "delivery";
     const fee = Number(o.deliveryFee) || 0;
     const wa = "https://wa.me/" + waNumber(o.phone) + "?text=" + encodeURIComponent("Hi " + String(o.name).split(" ")[0] + ", Good Eats here. We have your order (" + money(Number(o.total) || 0) + ").");
+    const drvWa = "https://wa.me/" + waNumber(o.phone) + "?text=" + encodeURIComponent(driverMsg(o));
     const payBadge = !p.viaPF ? `<span class="pay cash">Pay on collection</span>`
       : p.paid ? `<span class="pay paid">PAID (PayFast)</span>` : `<span class="pay wait">Awaiting payment check</span>`;
     const payBox = p.viaPF && !p.paid ? `<div class="payline">Look for <b>${money(Number(o.total) || 0)}</b> in your PayFast dashboard with this reference:<code>${esc(p.ref || "(no reference)")}</code></div>
@@ -1160,7 +1165,7 @@ function drawOnline(list){
     const canSend = !p.viaPF || p.paid;
     return `<div class="ticket online${p.test ? " isTest" : ""}" data-created="${o.createdAt}"><h3><span class="who">${esc(o.name)}</span><span class="t">${time(o.createdAt)} · <b class="age"></b></span></h3>
       <div class="badges"><span class="kind">${delivery ? "Delivery" : "Collection"}</span>${payBadge}${p.test ? `<span class="pay test">TEST ORDER</span>` : ""}</div>
-      <div class="contact"><a href="tel:${esc(String(o.phone).replace(/[^\d+]/g, ""))}">Call ${esc(o.phone)}</a><a class="wa" href="${esc(wa)}" target="_blank" rel="noopener">WhatsApp</a></div>
+      <div class="contact"><a href="tel:${esc(String(o.phone).replace(/[^\d+]/g, ""))}">Call ${esc(o.phone)}</a><a class="wa" href="${esc(wa)}" target="_blank" rel="noopener">WhatsApp</a>${delivery && canSend ? `<a class="drv" href="${esc(drvWa)}" target="_blank" rel="noopener">Send driver intro</a>` : ""}</div>
       ${delivery ? `<div class="addr">${esc(o.address || "")}${map ? " · " + map : ""}</div>` : ""}
       ${p.notes ? `<div class="note">${esc(p.notes)}</div>` : ""}
       <ul>${lis}</ul>
