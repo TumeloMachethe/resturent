@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <title>Good Eats Orders</title>
 <style>
 :root{--bg:#0e0e0e;--ink:#f4f1ea;--card:#1a1a1a;--line:#333;--green:#2e9e6b;--amber:#f7b52c;--red:#e0564a;--mute:#9a9a9a}
@@ -153,6 +155,25 @@ nav button span{font-weight:700}
 .modal .box{background:var(--card);border:2px solid var(--line);border-radius:14px;padding:16px;width:440px;max-width:100%}
 .modal h3{margin:0 0 4px}
 .modal p{margin:0 0 10px;color:var(--mute);font-size:15px}
+/* counter payment pop-up */
+.paybox{max-height:96vh;overflow-y:auto}
+.paytotal{font-size:clamp(44px,12vw,64px);font-weight:800;color:var(--amber);line-height:1.1;margin:4px 0 12px;text-align:center}
+.paychoice{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.paychoice button{padding:22px 6px;font:inherit;font-size:22px;font-weight:800;border-radius:12px;border:3px solid var(--line);background:#222;color:var(--ink);cursor:pointer}
+.paychoice button.on{border-color:var(--amber);background:var(--amber);color:#111}
+.cashbox{margin-bottom:12px}
+.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.quick button{padding:14px 0;font:inherit;font-weight:700;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+.quick button:active{background:#2a2a2a}
+.cashbox label{display:block;font-weight:600}
+.cashbox input{width:100%;margin-top:4px;padding:12px;font:inherit;font-size:24px;text-align:center;border-radius:10px;border:2px solid var(--line);background:#111;color:var(--ink)}
+.chg{margin-top:8px;font-size:24px;font-weight:600;text-align:center;color:var(--mute)}
+.chg.ok{color:var(--green)}.chg.short{color:var(--red)}
+.paycancel{width:100%;margin-top:8px;padding:10px;font:inherit;border-radius:10px;border:1px solid var(--line);background:none;color:var(--mute);cursor:pointer}
+.refunds{border:2px solid var(--red);background:#2a1512;border-radius:12px;padding:12px;margin-bottom:14px}
+.refunds h3{margin:0 0 4px;color:var(--red)}
+.refunds p{margin:0 0 8px;color:var(--ink);font-size:15px}
+.refunds div{padding:4px 0;border-top:1px solid #4a2a26}
 
 /* ===== TV display: full screen, yellow Preparing | black Ready ===== */
 body[data-view=display] header,body[data-view=display] nav,body[data-view=display] #status,body[data-view=display] #signout{display:none}
@@ -170,6 +191,31 @@ main#display{max-width:none;margin:0;padding:0}
 .exitfs{display:none;position:fixed;top:8px;right:8px;z-index:70;opacity:0;font:inherit;font-size:13px;padding:6px 10px;border:0;border-radius:8px;background:#000;color:#fff;cursor:pointer}
 body[data-view=display] .exitfs{display:block}
 .exitfs:hover,.exitfs:focus{opacity:.85}
+/* rotating messages at the bottom of the Ready side (outside #d-ready, so the number redraws never touch it) */
+#display .board>div:last-child{display:flex;flex-direction:column}
+#promo{margin-top:auto;padding-top:4vh;max-width:22em;color:var(--amber);font-weight:700;font-size:clamp(26px,3.2vw,54px);line-height:1.25;opacity:0;transform:translateY(14px);transition:opacity .8s ease,transform .8s ease}
+#promo.show{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){#promo{transform:none}}
+
+/* ---- staff app additions ---- */
+#fsbtn{display:block;position:fixed;top:6px;left:6px;z-index:75;width:46px;height:46px;padding:0;border:0;border-radius:10px;background:#000;color:#fff;font:inherit;font-size:22px;line-height:1;opacity:0;cursor:pointer}
+#fsbtn:hover,#fsbtn:focus{opacity:.85}
+.bn.fade{animation:bnfade .9s ease forwards}
+@keyframes bnfade{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(.85)}}
+@media(prefers-reduced-motion:reduce){.bn.fade{animation:none;opacity:0}}
+#stockbox{margin-top:26px;background:var(--card);border:2px solid var(--line);border-radius:12px;padding:0 14px}
+#stockbox summary{cursor:pointer;padding:14px 0;font-weight:700;font-size:19px;list-style:none}
+#stockbox summary::-webkit-details-marker{display:none}
+#stockbox summary:after{content:"\25BE";float:right;color:var(--mute)}
+#stockbox[open] summary:after{content:"\25B4"}
+#stockbox summary b{color:var(--red)}
+#stockbox #stock{padding-bottom:12px}
+.smile{min-height:1.5em;margin:0 0 4px;color:var(--amber);font-size:17px;font-weight:600;opacity:0;transition:opacity 1.2s ease}
+.smile.show{opacity:.9}
+.onote{width:100%;margin:0 0 10px;padding:10px 12px;font:inherit;font-size:16px;border-radius:10px;border:2px solid var(--line);background:#111;color:var(--ink)}
+.knote{margin:6px 0 10px;padding:8px 10px;border-radius:8px;background:var(--amber);color:#111;font-weight:800;font-size:20px}
+.clr.recall{border-color:var(--amber);color:var(--amber)}
+.stat b.sm{font-size:20px;line-height:1.25}
 </style>
 </head>
 <body>
@@ -183,6 +229,7 @@ body[data-view=display] .exitfs{display:block}
 </nav>
 
 <main id="order">
+  <div class="smile" id="smile" aria-hidden="true"></div>
   <div class="now" id="now"></div>
   <div class="order-layout">
     <div>
@@ -194,11 +241,12 @@ body[data-view=display] .exitfs{display:block}
         <div class="paneltitle"><h2>New order</h2><button class="clr" id="clear" hidden>Clear</button></div>
         <div id="cart"></div>
         <div class="total">Total: <span id="ctotal">R0</span></div>
+        <input class="onote" id="onote" maxlength="80" autocomplete="off" placeholder="Note for the kitchen (no onion, extra sauce)">
         <div class="slipsrow"><b>Slip number</b></div>
         <div class="slips" id="slips"></div>
-        <button class="big" id="send" disabled>Send to kitchen</button>
+        <button class="big" id="send" disabled>Take payment</button>
       </div>
-      <h2 style="margin-top:18px">Ready to serve</h2>
+      <div class="paneltitle" style="margin-top:18px"><h2>Ready to serve</h2><button class="clr recall" hidden></button></div>
       <div id="ready"></div>
     </div>
   </div>
@@ -206,10 +254,9 @@ body[data-view=display] .exitfs{display:block}
 <div class="cartbar" id="cartbar"><span id="cbinfo"></span><button id="cbgo">Review order</button></div>
 
 <main id="kitchen">
-  <h2>Orders to prepare <button class="soundbtn" id="snd">Turn on sound</button></h2>
+  <h2>Orders to prepare <button class="soundbtn" id="snd">Turn on sound</button> <button class="soundbtn recall" hidden></button></h2>
   <div class="cols" id="queue"></div>
-  <h2 style="margin-top:26px">Out of stock? Tap a dish</h2>
-  <div id="stock"></div>
+  <details id="stockbox"><summary id="stocksum">Out of stock? Tap a dish</summary><div id="stock"></div></details>
 </main>
 
 <main id="online">
@@ -219,10 +266,11 @@ body[data-view=display] .exitfs{display:block}
 </main>
 
 <button class="exitfs" id="exitfs">Back to menu</button>
+<button id="fsbtn" type="button" title="Full screen" aria-label="Full screen">⛶</button>
 <main id="display">
   <div class="board">
     <div><h2>Preparing</h2><div class="bignums" id="d-prep"></div></div>
-    <div><h2>Ready — please collect</h2><div class="bignums ready" id="d-ready"></div></div>
+    <div><h2>Ready — please collect</h2><div class="bignums ready" id="d-ready"></div><div id="promo" aria-hidden="true"></div></div>
   </div>
 </main>
 
@@ -236,7 +284,12 @@ body[data-view=display] .exitfs{display:block}
     <div class="stat">Money taken<b id="s-money">R0</b></div>
     <div class="stat">Still in kitchen<b id="s-open">0</b></div>
     <div class="stat">Delivery fees (in money taken)<b id="s-fees">R0</b></div>
+    <div class="stat">Cash at counter<b id="s-cash">R0</b></div>
+    <div class="stat">Card at counter<b id="s-card">R0</b></div>
+    <div class="stat">Best seller today<b class="sm" id="s-best">—</b></div>
+    <div class="stat">Busiest hour<b class="sm" id="s-busy">—</b></div>
   </div>
+  <div class="refunds" id="s-refunds" hidden></div>
   <table><thead><tr><th>Dish</th><th class="n">Sold</th><th class="n">Amount</th></tr></thead><tbody id="s-rows"></tbody></table>
   <button class="link" id="reset">Delete all orders (reset demo)</button>
   </div>
@@ -405,7 +458,7 @@ function drawCart(){
   const total = ids.reduce((s,id) => s + cart[id] * info(id).d.price, 0), count = ids.reduce((s,id) => s + cart[id], 0);
   $("ctotal").textContent = money(total);
   $("send").disabled = !ids.length || !slip;
-  $("send").textContent = !ids.length ? "Send to kitchen" : slip ? "Send to kitchen (slip " + slip + ")" : "Pick a slip number";
+  $("send").textContent = !ids.length ? "Take payment" : slip ? "Take payment (slip " + slip + ")" : "Pick a slip number";
   $("clear").hidden = !ids.length;
   document.body.classList.toggle("hascart", ids.length > 0);
   $("cbinfo").innerHTML = `<b>${count}</b> item${count === 1 ? "" : "s"} · <b>${money(total)}</b>`;
@@ -416,7 +469,7 @@ $("cart").onclick = e => {
   const id = b.dataset.id; cart[id] += +b.dataset.d;
   if(cart[id] <= 0) delete cart[id]; drawCart();
 };
-$("clear").onclick = () => { if(confirm("Clear this order?")){ cart = {}; drawCart(); } };
+$("clear").onclick = () => { if(confirm("Clear this order?")){ cart = {}; $("onote").value = ""; drawCart(); } };
 $("cbgo").onclick = () => $("cartpanel").scrollIntoView({behavior:"smooth", block:"start"});
 let slip = null;
 const usedSlips = () => new Set(Object.values(orders).filter(o => o.status !== "served" && o.status !== "cancelled" && o.slip).map(o => o.slip));
@@ -450,20 +503,69 @@ drawSlips();
 
 // ----- send order -----
 const today = () => new Date().toLocaleDateString("en-CA");
-$("send").onclick = () => {
+// pop-up that takes the payment at the counter (Cash or Card) before the order goes to the kitchen
+function askPayment(total){
+  return new Promise(res => {
+    let method = null, got = 0;
+    const m = document.createElement("div"); m.className = "modal";
+    m.innerHTML = `<div class="box paybox"><h3>Take payment</h3>
+      <div class="paytotal">${money(total)}</div>
+      <div class="paychoice"><button data-m="cash">Cash</button><button data-m="card">Card</button></div>
+      <div class="cashbox" hidden>
+        <div class="quick"><button data-v="exact">Exact</button>${[5, 10, 20, 50, 100, 200].map(v => `<button data-v="${v}">R${v}</button>`).join("")}<button data-v="clear">Clear</button></div>
+        <label>Cash received<input id="pgot" inputmode="decimal" autocomplete="off" placeholder="0"></label>
+        <div class="chg" id="pchg"></div>
+      </div>
+      <button class="big" id="pok" disabled>Payment received — send to kitchen</button><button class="paycancel" id="pno">Cancel</button></div>`;
+    document.body.appendChild(m);
+    const q = sel => m.querySelector(sel), r2 = n => Math.round(n * 100) / 100;
+    const done = v => { m.remove(); res(v); };
+    const upd = () => {
+      m.querySelectorAll(".paychoice button").forEach(b => b.classList.toggle("on", b.dataset.m === method));
+      q(".cashbox").hidden = method !== "cash";
+      let ok = method === "card";
+      if(method === "cash"){
+        const diff = r2(got - total); ok = got > 0 && diff >= 0;
+        q("#pchg").className = "chg " + (got <= 0 ? "" : ok ? "ok" : "short");
+        q("#pchg").innerHTML = got <= 0 ? "Tap Exact, or the money handed over" : ok ? `Change: <b>${money(diff)}</b>` : `Short by <b>${money(-diff)}</b>`;
+      }
+      q("#pok").disabled = !ok;
+    };
+    m.querySelector(".paychoice").onclick = e => { const b = e.target.closest("button"); if(!b) return; method = b.dataset.m; upd(); };
+    m.querySelector(".quick").onclick = e => {
+      const b = e.target.closest("button"); if(!b) return; const v = b.dataset.v;
+      got = v === "exact" ? total : v === "clear" ? 0 : r2(got + Number(v));      // note buttons add up what the customer hands over
+      q("#pgot").value = got ? String(got) : ""; upd();
+    };
+    q("#pgot").oninput = () => { got = Math.max(0, r2(parseFloat(q("#pgot").value.replace(",", ".")) || 0)); upd(); };
+    q("#pok").onclick = () => { if(!q("#pok").disabled) done({method}); };
+    q("#pno").onclick = () => done(null);
+    m.onclick = e => { if(e.target === m) done(null); };
+    upd();
+  });
+}
+$("send").onclick = async () => {
   if(usedSlips().has(slip)){ alert("That slip number is already in use."); slip = null; drawSlips(); return; }
   const items = Object.keys(cart).map(id => {
     const x = info(id);
     return {id, name:x.name, price:x.d.price, qty:cart[id]};
   });
   const total = items.reduce((s,i) => s + i.price * i.qty, 0);
+  const pay = await askPayment(total);                                   // nothing is sent until the payment is confirmed
+  if(!pay) return;
+  if(usedSlips().has(slip)){ alert("Slip " + slip + " was just taken on another device. Pick another slip and take the payment again."); slip = null; drawSlips(); return; }
   $("send").disabled = true;
+  const note = $("onote").value.trim().slice(0, 80);
   db.ref("counter/" + today()).transaction(n => (n || 0) + 1).then(r => {
-    return db.ref("orders").push({
-      num: r.snapshot.val(), slip, items, total, status: "new",
+    const base = {
+      num: r.snapshot.val(), slip, items, total, status: "new", paid: true, payMethod: pay.method,
       createdAt: firebase.database.ServerValue.TIMESTAMP
+    };
+    return db.ref("orders").push(note ? {...base, note} : base).catch(err => {
+      if(!note) throw err;                                                  // the note was the problem: still send the order
+      return db.ref("orders").push(base).then(() => alert("The order went to the kitchen, but the note could not be saved. Tell the kitchen: " + note));
     });
-  }).then(() => { cart = {}; slip = null; drawSlips(); })
+  }).then(() => { cart = {}; slip = null; $("onote").value = ""; drawSlips(); })
     .catch(err => { alert("Could not send: " + err.message); drawCart(); });
 };
 
@@ -514,6 +616,8 @@ function drawSold(){
     const n = g.ids.filter(id => soldout[id]).length, all = n === g.ids.length;
     return `<button class="chipbtn ${all ? "off" : n ? "part" : ""}" data-ids="${g.ids.join(",")}">${esc(g.label)}${all ? " — SOLD OUT" : n ? " — some sizes out" : ""}</button>`;
   }).join("") + `</div>`).join("");
+  const nOut = CATS.reduce((n, c) => n + stockGroups(c).filter(g => g.ids.some(id => soldout[id])).length, 0);
+  $("stocksum").innerHTML = "Out of stock? Tap a dish" + (nOut ? ` <b>(${nOut} out)</b>` : "");
 }
 $("stock").onclick = e => {
   const b = e.target.closest("button"); if(!b) return;
@@ -625,7 +729,7 @@ async function play(n, src, hooks){
     if(x <= B.o || i === kf.length - 2){ const u = sm((x - A.o) / ((B.o - A.o) || 1)), e = A.e ? ease(u) : smooth(u); return {p: A.p + (B.p - A.p) * e, r: A.r + (B.r - A.r) * e, slip: !A.e}; } } };
 
   const cx0 = a.left + a.width / 2 - W / 2, cy0 = H / 2 - (a.top + a.height / 2), reach = a.width / 2 + 58 * k;
-  const T0 = 1.4, T2 = 1.9, T4 = 3.5, T3 = 2.8;
+  const T0 = .6, T2 = .6, T4 = 1.2, T3 = 1.2;
   let revealed = false, lastPuff = 0, t0 = performance.now(), phase = 0;
   const puff = (sx, sy) => { const p = document.createElement("div"), s = 8 + Math.random() * 12; p.className = "puff";
     Object.assign(p.style, {width: s + "px", height: s + "px", left: sx - s / 2 + "px", top: sy + "px"}); document.body.appendChild(p);
@@ -641,12 +745,12 @@ async function play(n, src, hooks){
         const cyc = (x * S) % 1; eff = cyc < .6 ? smooth(cyc / .6) : 1 - smooth((cyc - .6) / .4);
         chip.rotation.z = r.r; speak(x < .35 ? "Hnnngh…" : x < .72 ? "Heavy…!" : "Almost…");
         if(now - lastPuff > 140){ lastPuff = now; puff(rootX + W / 2 - f * 45, H / 2 - ch.root.position.y + 6); } }
-      else if(t < TP + T2){ phase = 2; pr = 1; g = G1; b = 1; tb = smooth(sm((t - TP) / 1.3)); pw = tb; showSw = true;
+      else if(t < TP + T2){ phase = 2; pr = 1; g = G1; b = 1; tb = smooth(sm((t - TP) / T2)); pw = tb; showSw = true;
         if(!revealed){ revealed = true; sc.remove(chip); hooks.land(); }
         speak("Phew… order up!"); }
       else if(t < TP + T2 + T4){ phase = 4; pr = 1; g = G1; pw = 1; wa = 0;      // straighten up slowly, then wipe his brow
         const lt = t - TP - T2, up = smooth(sm(lt / 1.2)), wt = lt - 1.1; b = tb = 1 - up; showSw = lt < 1.7;
-        ww = wt > 0 ? smooth(sm(wt / .8)) * (1 - smooth(sm((wt - 1.5) / .8))) : 0; speak(wt > .5 && wt < 2 ? "Whew!" : ""); }
+        ww = 0; speak(wt > .5 && wt < 2 ? "Whew!" : ""); }
       else if(t < TP + T2 + T4 + T3){ phase = 3; pr = 1; speak("");               // then walk along
         const lt = t - TP - T2 - T4, dist = 150 * (lt < .4 ? lt * lt / .8 : lt - .2);
         walkX = f * dist; g = G1 + dist / 50; pw = 1 - smooth(sm(lt / .4)); wa = sm(lt / .5); scl = 1 - sm((lt - (T3 - .5)) / .5); }
@@ -782,7 +886,7 @@ function startOrders(){
   const fresh = list.filter(o => o.status === "new").length;
   if(loaded && fresh > lastNew) beep();
   lastNew = fresh; loaded = true;
-  drawSlips(); drawDisplay(list); drawKitchen(list); drawReady(list); drawSummary(list);
+  drawSlips(); drawDisplay(list); drawKitchen(list); drawReady(list); drawSummary(list); showRecall();
   $("status").textContent = "● live";
 }, err => { $("status").textContent = "offline: " + err.message; });
 }
@@ -790,22 +894,23 @@ function startOrders(){
 setInterval(() => { if(liveStarted && ordersDay && today() !== ordersDay) startOrders(); }, 300000);
 
 const tag = o => (o.slip ? `Slip <span class="slipbig">${o.slip}</span>` : "Order #" + o.num) + (o.online ? ` <span class="t">· online · ${esc(o.customerName)}</span>` : "");
-let dispList = [], dispPrev = null, chefQ = [], chefBusy = false, hideReady = null, hideIn = null, outN = null; const holding = new Set();
+let dispList = [], dispPrev = null, chefQ = [], chefBusy = false, hideReady = null, hideIn = null, outN = null; const holding = new Set(); const fading = new Set(); let lastAct = null;
 const dnum = o => o.slip || o.num;
 function renderDisplay(){
   const f = pick => dispList.filter(pick).sort((a, b) => a.createdAt - b.createdAt)
-    .map(o => `<span class="bn" data-n="${dnum(o)}"${(hideReady === dnum(o) && o.status === "ready") || (hideIn === dnum(o) && o.status === "new") ? ' style="visibility:hidden"' : ""}>${dnum(o)}</span>`).join("") || `<span class="empty">—</span>`;
+    .map(o => `<span class="bn${fading.has(o.k) ? " fade" : ""}" data-n="${dnum(o)}"${(hideReady === dnum(o) && o.status === "ready") || (hideIn === dnum(o) && o.status === "new") ? ' style="visibility:hidden"' : ""}>${dnum(o)}</span>`).join("") || `<span class="empty">—</span>`;
   $("d-prep").innerHTML = f(o => o.status === "new" || (o.status === "ready" && holding.has(dnum(o))));
-  $("d-ready").innerHTML = f(o => (o.status === "ready" && !holding.has(dnum(o))));
+  $("d-ready").innerHTML = f(o => (o.status === "ready" && !holding.has(dnum(o))) || (o.status === "served" && fading.has(o.k)));
 }
 function drawDisplay(list){
   dispList = list;
   const prev = dispPrev; dispPrev = {}; list.forEach(o => dispPrev[o.k] = o.status);
+  if(prev && !document.hidden && $("display").classList.contains("on") && !matchMedia("(prefers-reduced-motion:reduce)").matches)
+    list.filter(o => o.status === "served" && prev[o.k] === "ready").forEach(o => { fading.add(o.k); setTimeout(() => { fading.delete(o.k); renderDisplay(); }, 1000); });   // collected: let the number fade away
   if(prev && window.THREE && !document.hidden && $("display").classList.contains("on") && !matchMedia("(prefers-reduced-motion:reduce)").matches && !chefBusy && !chefQ.length){
     const by = p => list.filter(p).sort((a, b) => a.createdAt - b.createdAt)[0];       // only when the chef is free, so no order is ever delayed
     let o, t;
     if(o = by(o => o.status === "ready" && prev[o.k] === "new")){ t = "push"; holding.add(dnum(o)); }                                  // Preparing -> Ready
-    else if(o = by(o => o.status === "new" && prev[o.k] === undefined && Date.now() - o.createdAt < 60000)){ t = "in"; hideIn = dnum(o); }  // new order: drag it into Preparing
     if(t) chefQ.push({t, n: dnum(o)});
   }
   renderDisplay(); if(!chefBusy && chefQ.length) runChef();
@@ -826,11 +931,41 @@ async function runChef(){
   }
   chefBusy = false;
 }
+
+// ----- rotating messages on the TV display (bottom of the Ready side) -----
+// Edit this list to change what customers see. Keep each one short enough to read in about 3 seconds.
+(function(){
+  const messages = [
+    "Thanks for waiting. Your food is being made fresh.",
+    "Good Food, Good Mood",
+    "Watch this screen for your slip number",
+    "Ask at the counter about today's specials",
+    "Did you know you can also order online?",
+    "goodeatspe.co.za",
+    "Follow Good Eats on Facebook, Instagram and TikTok"
+  ];
+  const SHOW_MS = 7000, FADE_MS = 800;
+  const el = $("promo"); let i = 0, last = 0;
+  function swap(){
+    last = Date.now();
+    const first = !el.textContent;
+    el.classList.remove("show");                                   // fade the old message out
+    setTimeout(() => {
+      el.textContent = messages[i]; i = (i + 1) % messages.length;
+      el.classList.add("show");                                    // fade the new one in
+    }, first ? 0 : FADE_MS);
+  }
+  setInterval(() => {
+    // only run on the TV screen, and hold still while the chef is carrying a number
+    if(!$("display").classList.contains("on") || document.hidden || chefBusy) return;
+    if(!el.textContent || Date.now() - last >= SHOW_MS) swap();
+  }, 1000);
+})();
 const time = ts => new Date(ts).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
 const whereHtml = o => !o.online || !o.orderType ? "" : o.orderType === "delivery"
   ? `<div class="where deliv">DELIVERY${o.address ? " · " + esc(o.address) : ""}</div>` : `<div class="where">Collection</div>`;
-const itemsHtml = o => whereHtml(o) + "<ul>" + (o.items || []).map(i => `<li>${i.qty} × ${esc(i.name)}</li>`).join("") + "</ul>";
-const payTag = o => o.online ? (o.paid ? `<span class="paidtag">PAID</span>` : `<span class="collect">Collect ${money(o.total)}</span>`) : money(o.total);
+const itemsHtml = o => whereHtml(o) + (o.note ? `<div class="knote">${esc(o.note)}</div>` : "") + "<ul>" + (o.items || []).map(i => `<li>${i.qty} × ${esc(i.name)}</li>`).join("") + "</ul>";
+const payTag = o => o.online ? (o.paid ? `<span class="paidtag">PAID</span>` : `<span class="collect">Collect ${money(o.total)}</span>`) : money(o.total) + (o.payMethod ? ` · <span class="paidtag">PAID ${o.payMethod === "card" ? "Card" : "Cash"}</span>` : "");
 
 function drawKitchen(list){
   const q = list.filter(o => o.status === "new").sort((a,b) => a.createdAt - b.createdAt);
@@ -866,13 +1001,27 @@ function drawReady(list){
     : `<div class="empty">Nothing ready yet.</div>`;
 }
 document.addEventListener("click", e => {
-  const c = e.target.closest(".cancel");
-  if(c && confirm("Cancel this order?")) db.ref("orders/" + c.dataset.k + "/status").set("cancelled");
+  const c = e.target.closest(".cancel"); if(!c || !c.dataset.k) return;       // the slip pop-up's Cancel button has no order attached
+  const o = orders[c.dataset.k];
+  const msg = o && o.payMethod ? "This order was paid by " + (o.payMethod === "card" ? "card" : "cash") + " (" + money(o.total) + "). If you cancel it you must refund the customer.\n\nCancel it anyway?" : "Cancel this order?";
+  if(confirm(msg)) db.ref("orders/" + c.dataset.k + "/status").set("cancelled");
 });
 document.addEventListener("click", e => {
   const b = e.target.closest(".done"); if(!b) return;
   b.disabled = true;
+  const o0 = orders[b.dataset.k]; if(o0){ lastAct = {k: b.dataset.k, from: o0.status, to: b.dataset.s}; showRecall(); }
   db.ref("orders/" + b.dataset.k + "/status").set(b.dataset.s);
+});
+// Recall: one tap puts the last Done / Served back where it was
+function showRecall(){
+  const o = lastAct && orders[lastAct.k], ok = !!o && o.status === lastAct.to;
+  document.querySelectorAll(".recall").forEach(b => { b.hidden = !ok; if(ok) b.textContent = "Recall " + (o.slip ? "slip " + o.slip : "order #" + o.num); });
+}
+document.addEventListener("click", e => {
+  if(!e.target.closest(".recall") || !lastAct) return;
+  const a = lastAct, o = orders[a.k]; lastAct = null; showRecall();
+  if(!o || o.status !== a.to){ alert("That order has already moved on."); return; }
+  db.ref("orders/" + a.k + "/status").set(a.from);
 });
 
 function drawSummary(list){
@@ -884,11 +1033,24 @@ function drawSummary(list){
     by[i.name].q += i.qty; by[i.name].a += i.qty * i.price;
   }));
   $("s-orders").textContent = t.length;
+  const best = Object.entries(by).sort((a, b) => b[1].q - a[1].q)[0];
+  $("s-best").textContent = best ? best[0] + " (" + best[1].q + " sold)" : "—";
+  const hrs = {}; t.forEach(o => { const h = new Date(o.createdAt).getHours(); hrs[h] = (hrs[h] || 0) + 1; });
+  const busy = Object.entries(hrs).sort((a, b) => b[1] - a[1])[0], hh = h => String(h % 24).padStart(2, "0") + ":00";
+  $("s-busy").textContent = busy ? hh(+busy[0]) + " to " + hh(+busy[0] + 1) + " (" + busy[1] + " order" + (busy[1] === 1 ? "" : "s") + ")" : "—";
   $("s-online").textContent = t.filter(o => o.online).length;
   $("s-money").textContent = money(t.reduce((s,o) => s + o.total, 0));
   $("s-open").textContent = t.filter(o => o.status === "new").length;
   const fees = t.reduce((s,o) => s + (Number(o.deliveryFee) || 0), 0), feeCount = t.filter(o => Number(o.deliveryFee) > 0).length;
   $("s-fees").textContent = money(fees);
+  const sum = pick => t.filter(pick).reduce((s,o) => s + o.total, 0);
+  $("s-cash").textContent = money(sum(o => o.payMethod === "cash"));
+  $("s-card").textContent = money(sum(o => o.payMethod === "card"));
+  const ref = list.filter(o => o.createdAt >= start.getTime() && o.status === "cancelled" && o.payMethod).sort((a,b) => a.createdAt - b.createdAt);
+  $("s-refunds").hidden = !ref.length;
+  $("s-refunds").innerHTML = ref.length ? `<h3>Refunds to give back: ${money(ref.reduce((s,o) => s + o.total, 0))}</h3>
+    <p>These orders were paid, then cancelled. Hand the money back so the till and card totals balance.</p>` +
+    ref.map(o => `<div>${o.slip ? "Slip " + o.slip : "Order #" + o.num} · ${o.payMethod === "card" ? "Card" : "Cash"} · <b>${money(o.total)}</b> · ${time(o.createdAt)}</div>`).join("") : "";
   const rows = Object.entries(by).sort((a,b) => b[1].q - a[1].q);
   $("s-rows").innerHTML = rows.length ? rows.map(([n,v]) =>
     `<tr><td>${esc(n)}</td><td class="n">${v.q}</td><td class="n">${money(v.a)}</td></tr>`).join("")
@@ -1054,6 +1216,37 @@ function chime(){
   }catch(e){}
 }
 $("osnd").onclick = () => chime();
+// ----- one-tap full screen on every tab: tap the hidden corner at the top left (tap again to leave) -----
+(function(){
+  const root = document.documentElement, btn = $("fsbtn");
+  const enter = root.requestFullscreen || root.webkitRequestFullscreen;
+  if(!enter){ btn.remove(); return; }            // iPhone browsers can't do this; Add to Home Screen instead
+  const sync = () => document.body.classList.toggle("isfs", !!(document.fullscreenElement || document.webkitFullscreenElement));
+  document.addEventListener("fullscreenchange", sync); document.addEventListener("webkitfullscreenchange", sync);
+  btn.onclick = () => { try{
+    const inFs = document.fullscreenElement || document.webkitFullscreenElement;
+    const r = inFs ? (document.exitFullscreen || document.webkitExitFullscreen).call(document) : enter.call(root);
+    if(r && r.catch) r.catch(() => {});
+  }catch(e){} };
+})();
+
+// ----- gentle smile reminders on the Take orders tab (never on the Kitchen) -----
+(function(){
+  const msgs = [
+    "Don't forget to smile, it makes the food taste better.",
+    "Greet every customer like a friend.",
+    "A kind word costs nothing.",
+    "Take a breath, you're doing great.",
+    "Good food, good mood, and it starts with you."
+  ];
+  const SHOW_MS = 7000, EVERY_MS = 60000, el = $("smile"); let i = 0, last = Date.now() - EVERY_MS + 20000;   // first one after about 20 seconds
+  setInterval(() => {
+    if(document.body.dataset.view !== "order" || document.hidden) return;
+    if(el.classList.contains("show")){ if(Date.now() - last >= SHOW_MS) el.classList.remove("show"); return; }
+    if(Date.now() - last >= EVERY_MS){ last = Date.now(); el.textContent = msgs[i]; i = (i + 1) % msgs.length; el.classList.add("show"); }
+  }, 1000);
+})();
+
 $("exitfs").onclick = () => { location.hash = "order"; location.reload(); };
 
 // ----- staff login -----
