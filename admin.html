@@ -18,15 +18,23 @@ label{display:block;font-size:13px;color:var(--mute);margin:8px 0 3px}
 input,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}.row>*{flex:1;min-width:110px}
 button.b{border:0;border-radius:8px;padding:10px 14px;font:inherit;font-weight:600;cursor:pointer;background:var(--acc);color:var(--accink)}
-button.g{border:1px solid var(--line);background:none;color:var(--ink);border-radius:8px;padding:7px 10px;font:inherit;font-size:14px;cursor:pointer}
-button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+button.g,a.g{border:1px solid var(--line);background:none;color:var(--ink);border-radius:8px;padding:7px 10px;font:inherit;font-size:14px;cursor:pointer;text-decoration:none;display:inline-block}
+button.r{border:1px solid var(--bad);background:none;color:var(--bad);border-radius:8px;padding:8px 12px;font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 .item{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line);flex-wrap:wrap}
 .item:first-child{border-top:0}.item .n{flex:1;min-width:150px}.item small{color:var(--mute);display:block}
 .low{color:var(--bad);font-weight:700}.off{opacity:.5}
 .big{font-size:26px;font-weight:700}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
 .stats div{background:var(--bg);border-radius:8px;padding:10px}.stats span{font-size:13px;color:var(--mute)}
 .empty{color:var(--mute);padding:18px 0;text-align:center}
+.rs{flex-basis:100%;background:var(--bg);border-radius:8px;padding:8px 10px}
+.rs summary{cursor:pointer;color:var(--mute);font-size:14px}
+.pv{min-height:1.4em;margin:6px 0 0;font-weight:600;color:var(--ok)}
+.warnbox{border:1px solid var(--bad);background:var(--card)}
+.warnbox h2{color:var(--bad)}
 #login{max-width:340px;margin:12vh auto;padding:0 16px}
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);max-width:92vw;background:var(--ok);color:#fff;padding:12px 18px;border-radius:10px;font-weight:700;opacity:0;pointer-events:none;transition:opacity .25s;z-index:50}
+#toast.show{opacity:1}#toast.bad{background:var(--bad)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style></head><body>
 <div id="login" hidden><div class="card"><h2>Sign in</h2>
@@ -34,8 +42,9 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 <label for="pw">Password</label><input id="pw" type="password" autocomplete="current-password">
 <p id="lm" class="low"></p><button class="b" id="go" style="width:100%">Sign in</button></div></div>
 <div id="app" hidden>
-<header><h1 id="biz">Shop admin</h1><button class="g" id="tg">Light / dark</button></header>
+<header><a class="g" id="back" href="index.html">&larr; Back to counter</a><h1 id="biz">Shop admin</h1><button class="g" id="tg">Light / dark</button></header>
 <nav id="tabs"></nav><main id="view"></main></div>
+<div id="toast" role="status" aria-live="polite"></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
@@ -54,7 +63,9 @@ const STARTER=[{"id":"chi0","cat":"Chips","grp":"Chips","size":"Small","name":"S
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const R=n=>"R"+(Math.round((n||0)*100)/100).toLocaleString();
 const TABS={menu:"Menu",stock:"Stock",report:"Report",act:"Activity",set:"Settings"};
-let S={menu:{},stock:{},purch:{},daily:{},act:{},sold:{},set:{}},tab="menu",editing=null,month=new Date().toISOString().slice(0,7),who_f="";
+let S={menu:{},stock:{},purch:{},daily:{},act:{},sold:{},set:{}},tab="menu",editing=null,draft=null,month=new Date().toISOString().slice(0,7),who_f="";
+// pop-up message after an action
+function toast(m,bad){const t=$("toast");t.textContent=m;t.className="show"+(bad?" bad":"");clearTimeout(toast.t);toast.t=setTimeout(()=>{t.className=""},3500)}
 // theme
 const th=localStorage.getItem("theme")||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
 document.documentElement.dataset.theme=th;
@@ -73,39 +84,70 @@ firebase.auth().onAuthStateChanged(u=>{
 function nav(){$("tabs").innerHTML=Object.keys(TABS).map(k=>`<button data-t="${k}" class="${k===tab?"on":""}">${TABS[k]}</button>`).join("")}
 $("tabs").onclick=e=>{const b=e.target.closest("[data-t]");if(b){tab=b.dataset.t;draw()}};
 function draw(){
-  if(document.activeElement&&/INPUT|SELECT/.test(document.activeElement.tagName)&&document.activeElement.closest("#view")&&tab!=="menu"&&tab!=="report")return;
+  if(document.activeElement&&/INPUT|SELECT/.test(document.activeElement.tagName)&&document.activeElement.closest("#view")&&tab!=="report")return;
   $("biz").textContent=S.set.business||"Shop admin";nav();
   $("view").innerHTML=({menu:vMenu,stock:vStock,report:vReport,act:vAct,set:vSet})[tab]();
 }
-const stockOpts=sel=>`<option value="">Not tracked</option>`+Object.entries(S.stock).map(([k,s])=>`<option value="${k}"${k===sel?" selected":""}>${esc(s.name)}</option>`).join("");
+const stockGroups=()=>[...new Set(Object.values(S.stock).filter(s=>s&&s.name&&s.grp).map(s=>s.grp))].sort((a,b)=>a.localeCompare(b));
+const stockList=()=>Object.entries(S.stock).filter(([k,s])=>s&&s.name);
+const stockOpts=sel=>`<option value="">Not tracked</option>`+stockList().sort((a,b)=>((a[1].grp||"~")+a[1].name).localeCompare((b[1].grp||"~")+b[1].name)).map(([k,s])=>`<option value="${k}"${k===sel?" selected":""}>${s.grp?esc(s.grp)+" - ":""}${esc(s.name)}</option>`).join("");
+// short list of what is running low (shown at the top of Menu and Stock)
+function lowBanner(){
+  const low=stockList().filter(([k,s])=>(s.qty||0)<=(s.low||0)).sort((a,b)=>a[1].name.localeCompare(b[1].name));
+  if(!low.length)return "";
+  return `<div class="card warnbox"><h2>Running low: time to buy</h2>`+low.map(([k,s])=>`<div class="item"><div class="n"><b>${esc(s.name)}</b></div><div class="low">${Math.round((s.qty||0)*100)/100} ${esc(s.unit||"")} left</div></div>`).join("")+`</div>`;
+}
 // ---------- MENU ----------
+function initDraft(){
+  const e=editing&&S.menu[editing]?S.menu[editing]:{};
+  const u=e.uses?Object.entries(e.uses).map(([s,q])=>({s,q})):[];
+  draft={name:e.name||"",price:e.price==null?"":e.price,cat:e.cat||"",uses:u.length?u:[{s:"",q:1}]};
+}
 function vMenu(){
+  if(!draft)initDraft();
   const items=Object.entries(S.menu).map(([id,d])=>({id,...d})).sort((a,b)=>(a.order||0)-(b.order||0));
-  const e=editing&&S.menu[editing]?S.menu[editing]:{},su=e.uses?Object.keys(e.uses)[0]:"";
   const cats=[...new Set(items.map(d=>d.cat))];
-  let h=`<div class="card"><h2>${editing?"Edit item":"Add an item"}</h2><div class="row">
-  <div><label for="mn">Name</label><input id="mn" value="${esc(e.name)}"></div>
-  <div><label for="mp">Price (R)</label><input id="mp" type="number" min="0" step="0.5" value="${e.price??""}"></div>
-  <div><label for="mc">Section</label><input id="mc" list="cl" value="${esc(e.cat)}"><datalist id="cl">${cats.map(c=>`<option>${esc(c)}`).join("")}</datalist></div></div>
-  <div class="row"><div><label for="ms">Counts down this stock item</label><select id="ms">${stockOpts(su)}</select></div>
-  <div><label for="mq">Used per sale</label><input id="mq" type="number" min="0" step="0.1" value="${su?e.uses[su]:1}"></div></div>
+  const useRows=draft.uses.map((u,i)=>`<div class="row"><div><label for="us${i}">Stock item</label><select id="us${i}" class="us" data-i="${i}">${stockOpts(u.s)}</select></div>
+    <div><label for="uq${i}">Used per sale</label><input id="uq${i}" class="uq" data-i="${i}" type="number" min="0" step="0.1" value="${esc(u.q)}"></div>
+    <div style="flex:0 0 auto;min-width:0"><button class="g" data-a="rmuse" data-i="${i}">Remove</button></div></div>`).join("");
+  let h=lowBanner()+`<div class="card"><h2>${editing?"Edit item":"Add an item"}</h2><div class="row">
+  <div><label for="mn">Name</label><input id="mn" value="${esc(draft.name)}"></div>
+  <div><label for="mp">Price (R)</label><input id="mp" type="number" min="0" step="0.5" value="${esc(draft.price)}"></div>
+  <div><label for="mc">Section</label><input id="mc" list="cl" value="${esc(draft.cat)}"><datalist id="cl">${cats.map(c=>`<option>${esc(c)}`).join("")}</datalist></div></div>
+  <h3>Counts down these stock items</h3>${useRows}
+  <p><button class="g" data-a="adduse">+ Add another stock item</button></p>
   <p><button class="b" id="msave">${editing?"Save changes":"Add item"}</button> ${editing?`<button class="g" id="mcancel">Cancel</button>`:""}</p></div>`;
   if(!items.length)return h+`<div class="card"><h2>Your menu lives in the code right now</h2><p>Load it into the database once, then manage it here. The counter keeps working from its built-in list until you do.</p><button class="b" id="mimport">Load current menu (${STARTER.length} items)</button></div>`;
-  [...new Set(items.map(d=>d.cat))].forEach(c=>{h+=`<div class="card"><h2>${esc(c)}</h2>`+items.filter(d=>d.cat===c).map(d=>`<div class="item ${d.active===false?"off":""}"><div class="n"><b>${esc(d.name)}</b> ${R(d.price)}<small>${d.active===false?"Archived":S.sold[d.id]?"Sold out":"On the menu"}${d.uses?" · counts down "+esc((S.stock[Object.keys(d.uses)[0]]||{}).name||"stock"):""}</small></div>
-  <button class="g" data-a="sold" data-id="${d.id}">${S.sold[d.id]?"Back in stock":"Sold out"}</button><button class="g" data-a="edit" data-id="${d.id}">Edit</button><button class="g" data-a="arch" data-id="${d.id}">${d.active===false?"Restore":"Archive"}</button></div>`).join("")+`</div>`});
+  [...new Set(items.map(d=>d.cat))].forEach(c=>{h+=`<div class="card"><h2>${esc(c)}</h2>`+items.filter(d=>d.cat===c).map(d=>{
+    const names=d.uses?Object.keys(d.uses).map(k=>(S.stock[k]||{}).name||"stock").join(", "):"";
+    return `<div class="item ${d.active===false?"off":""}"><div class="n"><b>${esc(d.name)}</b> ${R(d.price)}<small>${d.active===false?"Archived":S.sold[d.id]?"Sold out":"On the menu"}${names?" · counts down "+esc(names):""}</small></div>
+  <button class="g" data-a="sold" data-id="${d.id}">${S.sold[d.id]?"Back in stock":"Sold out"}</button><button class="g" data-a="edit" data-id="${d.id}">Edit</button><button class="g" data-a="arch" data-id="${d.id}">${d.active===false?"Restore":"Archive"}</button></div>`}).join("")+`</div>`});
   return h;
 }
 // ---------- STOCK ----------
 function vStock(){
-  const rows=Object.entries(S.stock).sort((a,b)=>a[1].name.localeCompare(b[1].name));
-  let h=`<div class="card"><h2>Add a stock item</h2><div class="row"><div><label for="sn">Name</label><input id="sn" placeholder="Burger buns"></div>
-  <div><label for="su">Unit</label><input id="su" value="pcs"></div><div><label for="sl">Warn me at</label><input id="sl" type="number" min="0" value="10"></div><div><label for="sq">Count now</label><input id="sq" type="number" min="0" value="0"></div></div>
+  const rows=stockList().sort((a,b)=>a[1].name.localeCompare(b[1].name));
+  let h=lowBanner()+`<div class="card"><h2>Add a stock item</h2><div class="row"><div><label for="sn">Name</label><input id="sn" placeholder="Burger buns"></div>
+  <div><label for="su">Unit</label><input id="su" value="pcs"></div><div><label for="sl">Warn me at</label><input id="sl" type="number" min="0" value="10"></div>
+  <div><label for="sg">Group</label><input id="sg" list="sgl" placeholder="Bread, Meat, Drinks"><datalist id="sgl">${stockGroups().map(g=>`<option>${esc(g)}`).join("")}</datalist></div></div>
+  <div class="row"><div><label for="sq">Count now</label><input id="sq" type="number" min="0" value="0"></div>
+  <div><label for="sp">Total paid for all of these (R)</label><input id="sp" type="number" min="0" step="0.01" placeholder="Optional"></div></div>
   <p><button class="b" id="sadd">Add stock item</button></p></div><div class="card"><h2>Stock on hand</h2>`;
   if(!rows.length)h+=`<div class="empty">No stock items yet. Add buns, patties, bags or cold drinks above.</div>`;
-  h+=rows.map(([id,s])=>{const low=(s.qty||0)<=(s.low||0);return `<div class="item"><div class="n"><b>${esc(s.name)}</b><small>${low?`<span class="low">Running low</span> · `:""}warns at ${s.low||0} ${esc(s.unit)}${s.cost?" · last cost "+R(s.cost)+" each":""}</small></div>
+  const groups=[...new Set(rows.map(([id,s])=>s.grp||""))].sort((a,b)=>a===""?1:b===""?-1:a.localeCompare(b));
+  const cardHtml=([id,s])=>{const low=(s.qty||0)<=(s.low||0);return `<div class="item"><div class="n"><b>${esc(s.name)}</b><small>${low?`<span class="low">Running low</span> · `:""}warns at ${s.low||0} ${esc(s.unit)}${s.cost?" · last cost "+R(s.cost)+" each":""}</small></div>
   <div class="big ${low?"low":""}">${Math.round((s.qty||0)*100)/100}</div>
-  <input style="width:80px" id="rq-${id}" type="number" min="0" placeholder="Qty"><input style="width:90px" id="rc-${id}" type="number" min="0" placeholder="Paid R">
-  <button class="b" data-a="restock" data-id="${id}">Restock</button><button class="g" data-a="fix" data-id="${id}">Fix count</button></div>`}).join("")+`</div>`;
+  <button class="g" data-a="fix" data-id="${id}">Fix count</button><button class="g" data-a="grp" data-id="${id}">Group</button><button class="r" data-a="sdel" data-id="${id}">Delete</button>
+  <div class="rs"><b>Restock</b><div class="row">
+    <div><label for="rb-${id}">How many boxes</label><input id="rb-${id}" data-pv="${id}" type="number" min="0" step="any" placeholder="0"></div>
+    <div><label for="ri-${id}">How many in each box</label><input id="ri-${id}" data-pv="${id}" type="number" min="0" step="any" value="1"></div>
+    <div><label for="rp-${id}">Price of one box (R)</label><input id="rp-${id}" data-pv="${id}" type="number" min="0" step="0.01" placeholder="Optional"></div></div>
+    <div class="pv" id="pv-${id}"></div><button class="b" data-a="restock" data-id="${id}">Restock</button></div>
+  <details class="rs"><summary>Take off stock (dropped, spoiled, given away)</summary><div class="row">
+    <div><label for="wq-${id}">How many</label><input id="wq-${id}" type="number" min="0" step="any" placeholder="0"></div>
+    <div><label for="wr-${id}">Reason</label><select id="wr-${id}"><option>Dropped or spoiled</option><option>Given away</option><option>Other</option></select></div>
+    <div style="flex:0 0 auto;min-width:0"><button class="g" data-a="waste" data-id="${id}">Take off</button></div></div></details></div>`};
+  h+=groups.map(g=>`<h3>${g?esc(g):"No group yet"}</h3>`+rows.filter(([id,s])=>(s.grp||"")===g).map(cardHtml).join("")).join("")+`</div>`;
   return h;
 }
 // ---------- REPORT ----------
@@ -133,29 +175,88 @@ function vAct(){
 // ---------- SETTINGS ----------
 function vSet(){return `<div class="card"><h2>Settings</h2><label for="yn">Your name (saved with each change)</label><input id="yn" value="${esc(localStorage.getItem("who")||"")}">
   <label for="bn">Business name</label><input id="bn" value="${esc(S.set.business||"")}"><p><button class="b" id="setsave">Save settings</button></p>
-  <p><button class="g" id="so">Sign out</button></p></div>`}
+  <p><button class="g" id="so">Sign out</button></p></div>
+  <div class="card"><h2>Reset stock and sales</h2><p>Clears stock counts, purchases, daily sales and the Activity list, so you can start fresh. Your menu stays, but dishes are unlinked from stock.</p>
+  <button class="r" id="resetall">Reset stock and sales</button></div>`}
+// ---------- LIVE FORM STATE ----------
+const num=id=>{const e=$(id);return e?(parseFloat(e.value)||0):0};
+const r2=n=>Math.round(n*100)/100;
+document.addEventListener("input",e=>{
+  const t=e.target;
+  if(t.dataset&&t.dataset.pv){   // live check line under Restock
+    const id=t.dataset.pv,b=num("rb-"+id),n=num("ri-"+id)||1,p=num("rp-"+id),el=$("pv-"+id);
+    el.textContent=b>0?"That adds "+r2(b*n)+(p>0?" and costs "+R(r2(p/n))+" each":""):"";
+    return;
+  }
+  if(!draft)return;
+  if(t.id==="mn")draft.name=t.value;
+  if(t.id==="mp")draft.price=t.value;
+  if(t.id==="mc")draft.cat=t.value;
+  if(t.classList.contains("uq"))draft.uses[+t.dataset.i].q=t.value;
+});
 // ---------- ACTIONS ----------
-const num=id=>parseFloat($(id).value)||0;
 document.addEventListener("click",async e=>{
   const t=e.target;if(!t.closest("#view"))return;const id=t.id,a=t.dataset.a,k=t.dataset.id;
-  if(id==="mimport"){const o={};STARTER.forEach((d,i)=>{const{id:x,...r}=d;o[x]={...r,order:i,active:true}});await db.ref("menu").set(o);log("loaded the starting menu ("+STARTER.length+" items)")}
-  if(id==="msave"){const name=$("mn").value.trim(),cat=$("mc").value.trim();if(!name||!cat){alert("Give the item a name and a section.");return}
-    const sid=$("ms").value,d={name,cat,price:num("mp"),uses:sid?{[sid]:num("mq")||1}:null},key=editing||"m"+Date.now().toString(36);
+  try{
+  if(id==="mimport"){const o={};STARTER.forEach((d,i)=>{const{id:x,...r}=d;o[x]={...r,order:i,active:true}});await db.ref("menu").set(o);log("loaded the starting menu ("+STARTER.length+" items)");toast("Menu loaded ("+STARTER.length+" items)")}
+  if(id==="msave"){
+    draft.name=$("mn").value;draft.price=$("mp").value;draft.cat=$("mc").value;
+    const name=draft.name.trim(),cat=draft.cat.trim();if(!name||!cat){toast("Give the item a name and a section.",true);return}
+    const uses={};draft.uses.forEach(u=>{const q=parseFloat(u.q);if(u.s&&q>0)uses[u.s]=(uses[u.s]||0)+q});
+    const d={name,cat,price:parseFloat(draft.price)||0,uses:Object.keys(uses).length?uses:null},key=editing||"m"+Date.now().toString(36);
     if(!editing){d.active=true;d.order=Math.max(0,...Object.values(S.menu).map(x=>x.order||0))+1}
-    await db.ref("menu/"+key).update(d);log((editing?"changed ":"added ")+name+" at "+R(d.price));editing=null;draw()}
-  if(id==="mcancel"){editing=null;draw()}
-  if(a==="edit"){editing=k;draw();scrollTo(0,0)}
-  if(a==="sold"){await db.ref("soldout/"+k).set(S.sold[k]?null:true);log((S.sold[k]?"put back in stock: ":"marked sold out: ")+S.menu[k].name)}
-  if(a==="arch"){const on=S.menu[k].active===false;await db.ref("menu/"+k+"/active").set(on);log((on?"restored ":"archived ")+S.menu[k].name)}
-  if(id==="sadd"){const name=$("sn").value.trim();if(!name){alert("Give the stock item a name.");return}
-    await db.ref("stock").push({name,unit:$("su").value.trim()||"pcs",low:num("sl"),qty:num("sq")});log("added stock item "+name)}
-  if(a==="restock"){const q=num("rq-"+k),c=num("rc-"+k);if(q<=0){alert("Enter how many you bought.");return}const s=S.stock[k];
-    await db.ref("stock/"+k+"/qty").transaction(n=>(n||0)+q);if(c>0)await db.ref("stock/"+k+"/cost").set(Math.round(c/q*100)/100);
-    await db.ref("purchases").push({itemId:k,name:s.name,qty:q,cost:c,who:who(),ts:firebase.database.ServerValue.TIMESTAMP});log("restocked "+q+" "+s.name+(c?" for "+R(c):""))}
+    await db.ref("menu/"+key).update(d);log((editing?"changed ":"added ")+name+" at "+R(d.price));
+    toast((editing?"Saved changes to ":"Added ")+name);editing=null;draft=null;draw()}
+  if(id==="mcancel"){editing=null;draft=null;draw()}
+  if(a==="adduse"){draft.uses.push({s:"",q:1});draw()}
+  if(a==="rmuse"){draft.uses.splice(+t.dataset.i,1);if(!draft.uses.length)draft.uses.push({s:"",q:1});draw()}
+  if(a==="edit"){editing=k;draft=null;draw();scrollTo(0,0)}
+  if(a==="sold"){const was=S.sold[k];await db.ref("soldout/"+k).set(was?null:true);log((was?"put back in stock: ":"marked sold out: ")+S.menu[k].name);toast(was?S.menu[k].name+" is back in stock":S.menu[k].name+" marked sold out")}
+  if(a==="arch"){const on=S.menu[k].active===false;await db.ref("menu/"+k+"/active").set(on);log((on?"restored ":"archived ")+S.menu[k].name);toast((on?"Restored ":"Archived ")+S.menu[k].name)}
+  if(id==="sadd"){
+    const name=$("sn").value.trim();if(!name){toast("Give the stock item a name.",true);return}
+    const qty=num("sq"),paid=num("sp"),d={name,unit:$("su").value.trim()||"pcs",low:num("sl"),qty},grp=$("sg").value.trim();
+    if(grp)d.grp=grp;
+    if(paid>0&&qty>0)d.cost=r2(paid/qty);
+    const ref=db.ref("stock").push();await ref.set(d);
+    if(paid>0&&qty>0)await db.ref("purchases").push({itemId:ref.key,name,qty,cost:paid,who:who(),ts:firebase.database.ServerValue.TIMESTAMP});
+    log("added stock item "+name+(qty?" ("+qty+")":"")+(paid>0?" for "+R(paid):""));
+    toast("Added "+name+(qty?" ("+qty+")":""));
+    ["sn","sq","sp","sg"].forEach(i=>{if($(i))$(i).value=i==="sq"?"0":""})}
+  if(a==="grp"){const s=S.stock[k],v=prompt("Group for "+s.name+"? (for example Bread, Meat, Drinks. Leave empty for none)",s.grp||"");if(v===null)return;
+    await db.ref("stock/"+k+"/grp").set(v.trim()||null);log("put "+s.name+" in group "+(v.trim()||"none"));toast(s.name+" is now in "+(v.trim()||"no group"))}
+  if(a==="restock"){
+    const boxes=num("rb-"+k),per=num("ri-"+k)||1,price=num("rp-"+k),q=r2(boxes*per),cost=r2(boxes*price),s=S.stock[k];
+    if(boxes<=0){toast("Enter how many boxes you bought.",true);return}
+    await db.ref("stock/"+k+"/qty").transaction(n=>(n||0)+q);
+    if(price>0)await db.ref("stock/"+k+"/cost").set(r2(price/per));
+    await db.ref("purchases").push({itemId:k,name:s.name,qty:q,cost:cost,who:who(),ts:firebase.database.ServerValue.TIMESTAMP});
+    log("restocked "+q+" "+s.name+(cost?" for "+R(cost):""));toast("Added "+q+" "+s.name)}
+  if(a==="waste"){
+    const q=num("wq-"+k),why=$("wr-"+k).value,s=S.stock[k];
+    if(q<=0){toast("Enter how many to take off.",true);return}
+    await db.ref("stock/"+k+"/qty").transaction(n=>Math.max(0,(n||0)-q));
+    log("took off "+q+" "+s.name+" ("+why+")");toast("Took off "+q+" "+s.name+" ("+why+")")}
   if(a==="fix"){const v=prompt("Count right now for "+S.stock[k].name+"?",S.stock[k].qty);if(v===null||isNaN(parseFloat(v)))return;
-    await db.ref("stock/"+k+"/qty").set(parseFloat(v));log("fixed count of "+S.stock[k].name+" from "+S.stock[k].qty+" to "+parseFloat(v))}
-  if(id==="setsave"){localStorage.setItem("who",$("yn").value.trim()||"Unknown");await db.ref("settings/business").set($("bn").value.trim()||null);alert("Saved.")}
+    await db.ref("stock/"+k+"/qty").set(parseFloat(v));log("fixed count of "+S.stock[k].name+" from "+S.stock[k].qty+" to "+parseFloat(v));toast("Count for "+S.stock[k].name+" is now "+parseFloat(v))}
+  if(a==="sdel"){
+    const s=S.stock[k],linked=Object.values(S.menu).filter(d=>d&&d.uses&&d.uses[k]).map(d=>d.name);
+    if(linked.length){alert("You can't delete "+s.name+" yet. These dishes still count it down:\n\n"+linked.join("\n")+"\n\nGo to the Menu tab, edit each dish and remove "+s.name+" from its stock items. Then delete it here.");return}
+    if(!confirm("Delete "+s.name+" from stock? This cannot be undone."))return;
+    await db.ref("stock/"+k).remove();log("deleted stock item "+s.name);toast("Deleted "+s.name)}
+  if(id==="setsave"){localStorage.setItem("who",$("yn").value.trim()||"Unknown");await db.ref("settings/business").set($("bn").value.trim()||null);toast("Saved")}
+  if(id==="resetall"){
+    if(!confirm("Reset stock and sales?\n\nThis clears stock counts, purchases, daily sales and the Activity list. Your menu stays. This cannot be undone."))return;
+    const up={stock:null,purchases:null,daily:null,activity:null};
+    Object.entries(S.menu).forEach(([mk,d])=>{if(d&&d.uses)up["menu/"+mk+"/uses"]=null});
+    await db.ref().update(up);
+    await log("reset stock and sales");toast("Reset done")}
   if(id==="so")firebase.auth().signOut().then(()=>location.reload());
+  }catch(err){toast("That did not work: "+err.message,true)}
 });
-document.addEventListener("change",e=>{if(e.target.id==="mo"){month=e.target.value||month;draw()}if(e.target.id==="wf"){who_f=e.target.value;draw()}});
+document.addEventListener("change",e=>{
+  if(e.target.id==="mo"){month=e.target.value||month;draw()}
+  if(e.target.id==="wf"){who_f=e.target.value;draw()}
+  if(e.target.classList.contains("us")&&draft)draft.uses[+e.target.dataset.i].s=e.target.value;
+});
 </script></body></html>
