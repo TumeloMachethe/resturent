@@ -572,7 +572,7 @@ $("send").onclick = async () => {
       if(!note) throw err;                                                  // the note was the problem: still send the order
       return db.ref("orders").push(base).then(() => alert("The order went to the kitchen, but the note could not be saved. Tell the kitchen: " + note));
     });
-  }).then(() => { cart = {}; if(!quick) slip = null; $("onote").value = ""; drawSlips(); })
+  }).then(() => { recordSale(items, total); cart = {}; if(!quick) slip = null; $("onote").value = ""; drawSlips(); })
     .catch(err => { alert("Could not send: " + err.message); drawCart(); });
 };
 
@@ -595,6 +595,24 @@ function tryUnlock(){
 $("unlock").onclick = tryUnlock;
 $("pin").onkeydown = e => { if(e.key === "Enter") tryUnlock(); };
 
+// ----- inventory: live menu, stock countdown, daily totals (added) -----
+function startMenu(){ db.ref("menu").on("value", sn => { const v = sn.val(); if(!v) return;
+  const list = Object.entries(v).filter(([k,d]) => d && d.active !== false).sort((a,b) => (a[1].order||0) - (b[1].order||0))
+    .map(([k,d]) => ({...d, id:k, price:Number(d.price)||0}));
+  if(!list.length) return;
+  MENU.length = 0; list.forEach(d => MENU.push(d));
+  CATS.length = 0; [...new Set(MENU.map(d => d.cat))].forEach(c => CATS.push(c));
+  if(!CATS.includes(curCat)) curCat = CATS[0];
+  drawMenu(); }); }
+function recordSale(items, total){
+  try{
+    const use = {};
+    items.forEach(i => { const d = MENU.find(m => m.id === String(i.id).split("|")[0]);
+      if(d && d.uses) Object.keys(d.uses).forEach(s => use[s] = (use[s] || 0) + d.uses[s] * i.qty); });
+    Object.keys(use).forEach(s => db.ref("stock/" + s + "/qty").transaction(n => (n || 0) - use[s]));
+    db.ref("daily/" + today()).transaction(x => { x = x || {sales:0, orders:0}; x.sales += total; x.orders += 1; return x; });
+  }catch(e){}
+}
 // ----- sold out -----
 function startSold(){ db.ref("soldout").on("value", sn => { soldout = sn.val() || {}; drawSold(); publishSold(); }); }
 // copy of the sold-out list for the website to read, keyed by dish name
@@ -1271,7 +1289,7 @@ $("lpass").onkeydown = e => { if(e.key === "Enter") $("lbtn").click(); };
 $("signout").onclick = () => firebase.auth().signOut().then(() => location.reload());
 firebase.auth().onAuthStateChanged(user => {
   $("loginbox").style.display = user ? "none" : "flex";
-  if(user && !liveStarted){ liveStarted = true; startSold(); startOrders(); startOnline(); }
+  if(user && !liveStarted){ liveStarted = true; startSold(); startMenu(); startOrders(); startOnline(); }
 });
 </script>
 </body>
