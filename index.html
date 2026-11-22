@@ -218,6 +218,37 @@ body[data-view=display] .exitfs{display:block}
 .clr.recall{border-color:var(--amber);color:var(--amber)}
 #cartpanel.quick .slipsrow,#cartpanel.quick .slips{opacity:.3}
 .stat b.sm{font-size:20px;line-height:1.25}
+
+/* ---- day / night toggle (Take orders + Kitchen only) ---- */
+#order,#kitchen{transition:background-color .45s ease,color .45s ease}
+#order *,#kitchen *{transition:background-color .45s ease,border-color .45s ease,color .3s ease}
+#order.light,#kitchen.light,.modal.light{--bg:#f6f3ec;--ink:#1b1b1b;--card:#ffffff;--line:#d6d1c6;--mute:#6b6b6b;--amber:#c98400;--green:#238a5b;--red:#c9433a}
+#order.light,#kitchen.light{background:var(--bg);color:var(--ink)}
+.modal.light{color:var(--ink)}
+#order.light .dish:active,#kitchen.light .dish:active,#order.light .quick button:active{background:#ece7dc}
+#order.light .sizes .dish,#order.light .bread button,#kitchen.light .chipbtn{background:#f1ede3}
+#order.light .bread button.on,#order.light .cats button.on,#order.light .slips button.on,#order.light .paybtn{color:#fff}
+#order.light .cats button.on i{background:#fff;color:var(--amber)}
+#order.light .onote,#order.light .cashbox input{background:#fff;color:var(--ink)}
+#order.light .qty button{border-color:var(--line)}
+#kitchen.light .ticket.online .note,#kitchen.light .ticket.online .contact a,#kitchen.light .ticket.online .contact a.wa{background:#f1ede3;color:var(--ink)}
+#kitchen.light .ticket.online .payline{background:#fff4d6}
+#kitchen.light .ticket.age-late,#kitchen.light .ticket.online.age-late{background:#fbe5e2}
+#kitchen.light .okbtn:disabled{background:#d8d4ca;color:#888}
+#kitchen.light .knote{color:#fff}
+.modal.light .box,.modal.light .paychoice button,.modal.light .quick button,.modal.light .slips button{color:var(--ink)}
+.modal.light .paychoice button{background:#f1ede3}
+.modal.light .paychoice button.on,.modal.light .slips button.on{background:var(--amber);color:#fff}
+.modal.light .cashbox input{background:#fff;color:var(--ink)}
+.modal.light .big{color:#fff}
+.themebtn{display:inline-flex;align-items:center;gap:8px;font:inherit;font-size:14px;font-weight:600;margin-left:10px;padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;vertical-align:middle}
+.themebtn .ico{position:relative;width:20px;height:20px;display:inline-block}
+.themebtn .sun,.themebtn .moon{position:absolute;inset:0;font-size:18px;line-height:20px;text-align:center;transition:transform .55s cubic-bezier(.4,1.4,.5,1),opacity .35s ease}
+.themebtn .sun{transform:rotate(-90deg) scale(.3);opacity:0}
+.themebtn .moon{transform:none;opacity:1}
+.light .themebtn .sun{transform:none;opacity:1}
+.light .themebtn .moon{transform:rotate(90deg) scale(.3);opacity:0}
+@media(prefers-reduced-motion:reduce){#order,#kitchen,#order *,#kitchen *,.themebtn .sun,.themebtn .moon{transition:none!important}}
 </style>
 </head>
 <body>
@@ -231,6 +262,7 @@ body[data-view=display] .exitfs{display:block}
 </nav>
 
 <main id="order">
+  <div style="display:flex;justify-content:flex-end;margin-bottom:4px"><button class="themebtn" data-theme="order" type="button" aria-label="Switch day or night mode"><span class="ico"><span class="moon">🌙</span><span class="sun">☀️</span></span><span class="tl">Day mode</span></button></div>
   <div class="smile" id="smile" aria-hidden="true"></div>
   <div class="now" id="now"></div>
   <div class="order-layout">
@@ -256,7 +288,7 @@ body[data-view=display] .exitfs{display:block}
 <div class="cartbar" id="cartbar"><span id="cbinfo"></span><button id="cbgo">Review order</button></div>
 
 <main id="kitchen">
-  <h2>Orders to prepare <button class="soundbtn" id="snd">Turn on sound</button> <button class="soundbtn recall" hidden></button></h2>
+  <h2>Orders to prepare <button class="soundbtn" id="snd">Turn on sound</button> <button class="soundbtn recall" hidden></button> <button class="themebtn" data-theme="kitchen" type="button" aria-label="Switch day or night mode"><span class="ico"><span class="moon">🌙</span><span class="sun">☀️</span></span><span class="tl">Day mode</span></button></h2>
   <div class="cols" id="queue"></div>
   <details id="stockbox"><summary id="stocksum">Out of stock? Tap a dish</summary><div id="stock"></div></details>
 </main>
@@ -1292,6 +1324,28 @@ firebase.auth().onAuthStateChanged(user => {
   $("loginbox").style.display = user ? "none" : "flex";
   if(user && !liveStarted){ liveStarted = true; startSold(); startMenu(); startOrders(); startOnline(); }
 });
+
+// ----- day / night mode: separate for Take orders and Kitchen (display + Today never change) -----
+(function(){
+  const key = k => "ge-theme-" + k;
+  const saved = k => { try{ return localStorage.getItem(key(k)) === "light"; }catch(e){ return false; } };
+  const paint = (k, light) => {
+    const main = document.getElementById(k); if(!main) return;
+    main.classList.toggle("light", light);
+    main.querySelectorAll(".themebtn .tl").forEach(t => t.textContent = light ? "Night mode" : "Day mode");
+    if(k === "order") document.querySelectorAll(".modal").forEach(m => m.classList.toggle("light", light));
+  };
+  ["order","kitchen"].forEach(k => paint(k, saved(k)));
+  document.addEventListener("click", e => {
+    const b = e.target.closest(".themebtn"); if(!b) return;
+    const k = b.dataset.theme, light = !document.getElementById(k).classList.contains("light");
+    try{ localStorage.setItem(key(k), light ? "light" : "dark"); }catch(err){}
+    paint(k, light);
+  });
+  new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => {
+    if(n.nodeType === 1 && n.classList.contains("modal") && document.getElementById("order").classList.contains("light")) n.classList.add("light");
+  }))).observe(document.body, {childList:true});
+})();
 </script>
 </body>
 </html>
