@@ -35,11 +35,19 @@ button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{ou
 #login{max-width:340px;margin:12vh auto;padding:0 16px}
 #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);max-width:92vw;background:var(--ok);color:#fff;padding:12px 18px;border-radius:10px;font-weight:700;opacity:0;pointer-events:none;transition:opacity .25s;z-index:50}
 #toast.show{opacity:1}#toast.bad{background:var(--bad)}
+.printonly{display:none}
+@media print{
+:root[data-theme]{--bg:#fff;--card:#fff;--ink:#000;--mute:#444;--line:#ccc;--bad:#b3261e;--ok:#1b7f4b}
+header,nav,.noprint,#toast{display:none!important}
+.printonly{display:block}
+body{background:#fff}main{max-width:none;padding:0}.card{break-inside:avoid}
+}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style></head><body>
 <div id="login" hidden><div class="card"><h2>Sign in</h2>
 <label for="em">Email</label><input id="em" type="email" autocomplete="username">
 <label for="pw">Password</label><input id="pw" type="password" autocomplete="current-password">
+<label for="nm">Your first name (saved with every change)</label><input id="nm" autocomplete="given-name">
 <p id="lm" class="low"></p><button class="b" id="go" style="width:100%">Sign in</button></div></div>
 <div id="app" hidden>
 <header><a class="g" id="back" href="index.html">&larr; Back to counter</a><h1 id="biz">Shop admin</h1><button class="g" id="tg">Light / dark</button></header>
@@ -61,9 +69,9 @@ firebase.initializeApp({
 const db=firebase.database(),$=id=>document.getElementById(id);
 const STARTER=[{"id":"chi0","cat":"Chips","grp":"Chips","size":"Small","name":"Small Chips","price":20},{"id":"chi1","cat":"Chips","grp":"Chips","size":"Medium","name":"Medium Chips","price":25},{"id":"chi2","cat":"Chips","grp":"Chips","size":"Large","name":"Large Chips","price":30},{"id":"chi3","cat":"Chips","name":"Loaded Fries","price":40},{"id":"sav0","cat":"Savoury","name":"Russian","price":15},{"id":"sav1","cat":"Savoury","name":"Russian & Chips","price":25},{"id":"sav2","cat":"Savoury","name":"Fish & Chips","price":50},{"id":"sav3","cat":"Savoury","name":"Wings & Chips","price":50},{"id":"sav4","cat":"Savoury","name":"Kota","price":50},{"id":"bur0","cat":"Burgers","name":"Special Pink Sauce Burger","price":45},{"id":"bur1","cat":"Burgers","name":"Bacon & Cheese Burger","price":45},{"id":"bur2","cat":"Burgers","name":"Jalapeño Burger","price":45},{"id":"sch0","cat":"Schnitzel","name":"Schnitzel & Chips","price":45},{"id":"cro0","cat":"Croissants","name":"Cheese & Ham","price":30},{"id":"cro1","cat":"Croissants","name":"Bacon, Feta & Avo","price":35},{"id":"cro2","cat":"Croissants","name":"Cheese & Egg","price":30},{"id":"toa0","cat":"Toasties","name":"Chicken Mayo","price":25,"bread":true},{"id":"toa1","cat":"Toasties","name":"Cheese & Tomato","price":25,"bread":true},{"id":"toa2","cat":"Toasties","name":"Cheesy Toastie","price":20,"bread":true},{"id":"toa3","cat":"Toasties","name":"Bacon & Cheese","price":30,"bread":true},{"id":"toa4","cat":"Toasties","name":"Vegan Toastie","price":30,"bread":true},{"id":"mag0","cat":"Magwinya","grp":"Magwinya (each)","name":"Magwinya (each)","price":2},{"id":"dri0","cat":"Drinks","grp":"Coke","size":"330ml","name":"Drink: Coke 330ml","price":15},{"id":"dri1","cat":"Drinks","grp":"Coke","size":"500ml","name":"Drink: Coke 500ml","price":20},{"id":"dri2","cat":"Drinks","grp":"Coke","size":"1 litre","name":"Drink: Coke 1L","price":28},{"id":"dri3","cat":"Drinks","grp":"Coke","size":"2 litre","name":"Drink: Coke 2L","price":38},{"id":"dri4","cat":"Drinks","grp":"Fanta Orange","size":"330ml","name":"Drink: Fanta Orange 330ml","price":15},{"id":"dri5","cat":"Drinks","grp":"Fanta Orange","size":"500ml","name":"Drink: Fanta Orange 500ml","price":20},{"id":"dri6","cat":"Drinks","grp":"Fanta Orange","size":"1 litre","name":"Drink: Fanta Orange 1L","price":28},{"id":"dri7","cat":"Drinks","grp":"Fanta Orange","size":"2 litre","name":"Drink: Fanta Orange 2L","price":38},{"id":"dri8","cat":"Drinks","grp":"Sprite","size":"330ml","name":"Drink: Sprite 330ml","price":15},{"id":"dri9","cat":"Drinks","grp":"Sprite","size":"500ml","name":"Drink: Sprite 500ml","price":20},{"id":"dri10","cat":"Drinks","grp":"Sprite","size":"1 litre","name":"Drink: Sprite 1L","price":28},{"id":"dri11","cat":"Drinks","grp":"Sprite","size":"2 litre","name":"Drink: Sprite 2L","price":38},{"id":"dri12","cat":"Drinks","grp":"Water","name":"Drink: Water","price":10},{"id":"smo0","cat":"Smoothies","grp":"Strawberry smoothie","size":"350ml","name":"Smoothie: Strawberry smoothie 350ml","price":45},{"id":"smo1","cat":"Smoothies","grp":"Strawberry smoothie","size":"500ml","name":"Smoothie: Strawberry smoothie 500ml","price":55},{"id":"smo2","cat":"Smoothies","grp":"Peanut butter & banana","size":"350ml","name":"Smoothie: Peanut butter & banana 350ml","price":50},{"id":"smo3","cat":"Smoothies","grp":"Peanut butter & banana","size":"500ml","name":"Smoothie: Peanut butter & banana 500ml","price":60},{"id":"smo4","cat":"Smoothies","grp":"Blueberry smoothie","size":"350ml","name":"Smoothie: Blueberry smoothie 350ml","price":55},{"id":"smo5","cat":"Smoothies","grp":"Blueberry smoothie","size":"500ml","name":"Smoothie: Blueberry smoothie 500ml","price":65},{"id":"smo6","cat":"Smoothies","grp":"Strawberry & banana","size":"350ml","name":"Smoothie: Strawberry & banana 350ml","price":45},{"id":"smo7","cat":"Smoothies","grp":"Strawberry & banana","size":"500ml","name":"Smoothie: Strawberry & banana 500ml","price":55},{"id":"smo8","cat":"Smoothies","grp":"Mixed berry smoothie","size":"350ml","name":"Smoothie: Mixed berry smoothie 350ml","price":55},{"id":"smo9","cat":"Smoothies","grp":"Mixed berry smoothie","size":"500ml","name":"Smoothie: Mixed berry smoothie 500ml","price":65},{"id":"smo10","cat":"Smoothies","grp":"Mango & apple smoothie","size":"350ml","name":"Smoothie: Mango & apple smoothie 350ml","price":45},{"id":"smo11","cat":"Smoothies","grp":"Mango & apple smoothie","size":"500ml","name":"Smoothie: Mango & apple smoothie 500ml","price":55},{"id":"smo12","cat":"Smoothies","grp":"Coconut butter smoothie","size":"350ml","name":"Smoothie: Coconut butter smoothie 350ml","price":50},{"id":"smo13","cat":"Smoothies","grp":"Coconut butter smoothie","size":"500ml","name":"Smoothie: Coconut butter smoothie 500ml","price":55},{"id":"mil0","cat":"Milkshakes","grp":"Blueberry","size":"350ml","name":"Milkshake: Blueberry 350ml","price":40},{"id":"mil1","cat":"Milkshakes","grp":"Blueberry","size":"500ml","name":"Milkshake: Blueberry 500ml","price":50},{"id":"mil2","cat":"Milkshakes","grp":"Strawberry","size":"350ml","name":"Milkshake: Strawberry 350ml","price":40},{"id":"mil3","cat":"Milkshakes","grp":"Strawberry","size":"500ml","name":"Milkshake: Strawberry 500ml","price":50},{"id":"mil4","cat":"Milkshakes","grp":"Lime","size":"350ml","name":"Milkshake: Lime 350ml","price":40},{"id":"mil5","cat":"Milkshakes","grp":"Lime","size":"500ml","name":"Milkshake: Lime 500ml","price":50},{"id":"mil6","cat":"Milkshakes","grp":"Chocolate","size":"350ml","name":"Milkshake: Chocolate 350ml","price":40},{"id":"mil7","cat":"Milkshakes","grp":"Chocolate","size":"500ml","name":"Milkshake: Chocolate 500ml","price":50},{"id":"mil8","cat":"Milkshakes","grp":"Bubblegum","size":"350ml","name":"Milkshake: Bubblegum 350ml","price":40},{"id":"mil9","cat":"Milkshakes","grp":"Bubblegum","size":"500ml","name":"Milkshake: Bubblegum 500ml","price":50},{"id":"coo0","cat":"Coolers","grp":"Lemonade & mint","size":"350ml","name":"Cooler: Lemonade & mint 350ml","price":35},{"id":"coo1","cat":"Coolers","grp":"Lemonade & mint","size":"500ml","name":"Cooler: Lemonade & mint 500ml","price":45},{"id":"coo2","cat":"Coolers","grp":"Granadilla","size":"350ml","name":"Cooler: Granadilla 350ml","price":35},{"id":"coo3","cat":"Coolers","grp":"Granadilla","size":"500ml","name":"Cooler: Granadilla 500ml","price":45},{"id":"coo4","cat":"Coolers","grp":"Raspberry","size":"350ml","name":"Cooler: Raspberry 350ml","price":35},{"id":"coo5","cat":"Coolers","grp":"Raspberry","size":"500ml","name":"Cooler: Raspberry 500ml","price":45},{"id":"coo6","cat":"Coolers","grp":"Strawberry","size":"350ml","name":"Cooler: Strawberry 350ml","price":35},{"id":"coo7","cat":"Coolers","grp":"Strawberry","size":"500ml","name":"Cooler: Strawberry 500ml","price":45},{"id":"coo8","cat":"Coolers","grp":"Passion fruit","size":"350ml","name":"Cooler: Passion fruit 350ml","price":35},{"id":"coo9","cat":"Coolers","grp":"Passion fruit","size":"500ml","name":"Cooler: Passion fruit 500ml","price":45}];
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const R=n=>"R"+(Math.round((n||0)*100)/100).toLocaleString();
+const R=n=>{const v=Math.round((n||0)*100)/100,[i,d]=Math.abs(v).toFixed(2).split(".");return (v<0?"-":"")+"R"+i.replace(/\B(?=(\d{3})+(?!\d))/g,"\u00a0")+"."+d};
 const TABS={menu:"Menu",stock:"Stock",report:"Report",act:"Activity",set:"Settings"};
-let S={menu:{},stock:{},purch:{},daily:{},act:{},sold:{},set:{}},tab="menu",editing=null,draft=null,month=new Date().toISOString().slice(0,7),who_f="";
+let S={menu:{},stock:{},purch:{},daily:{},act:{},sold:{},set:{},give:{}},tab="menu",editing=null,draft=null,month=new Date().toISOString().slice(0,7),who_f="";
 // pop-up message after an action
 function toast(m,bad){const t=$("toast");t.textContent=m;t.className="show"+(bad?" bad":"");clearTimeout(toast.t);toast.t=setTimeout(()=>{t.className=""},3500)}
 // theme
@@ -71,14 +79,15 @@ const th=localStorage.getItem("theme")||(matchMedia("(prefers-color-scheme:dark)
 document.documentElement.dataset.theme=th;
 $("tg").onclick=()=>{const t=document.documentElement.dataset.theme==="dark"?"light":"dark";document.documentElement.dataset.theme=t;localStorage.setItem("theme",t)};
 // who + activity log
-const who=()=>{let w=localStorage.getItem("who");if(!w){w=(prompt("Your first name (saved with every change)?")||"").trim()||"Unknown";localStorage.setItem("who",w)}return w};
+const who=()=>localStorage.getItem("who")||"Unknown";
 const log=what=>db.ref("activity").push({who:who(),what,ts:firebase.database.ServerValue.TIMESTAMP});
 // login
-$("go").onclick=()=>firebase.auth().signInWithEmailAndPassword($("em").value.trim(),$("pw").value).catch(()=>{$("lm").textContent="Wrong email or password"});
+$("nm").value=localStorage.getItem("who")||"";
+$("go").onclick=()=>{const n=$("nm").value.trim();if(!n){$("lm").textContent="Please type your first name";return}localStorage.setItem("who",n);$("lm").textContent="";firebase.auth().signInWithEmailAndPassword($("em").value.trim(),$("pw").value).catch(()=>{$("lm").textContent="Wrong email or password"})};
 $("pw").onkeydown=e=>{if(e.key==="Enter")$("go").click()};
 firebase.auth().onAuthStateChanged(u=>{
   $("login").hidden=!!u;$("app").hidden=!u;if(!u)return;
-  [["menu","menu"],["stock","stock"],["purch","purchases"],["daily","daily"],["sold","soldout"],["set","settings"]].forEach(([k,p])=>db.ref(p).on("value",sn=>{S[k]=sn.val()||{};draw()}));
+  [["menu","menu"],["stock","stock"],["purch","purchases"],["daily","daily"],["sold","soldout"],["set","settings"],["give","giveaways"]].forEach(([k,p])=>db.ref(p).on("value",sn=>{S[k]=sn.val()||{};draw()}));
   db.ref("activity").limitToLast(100).on("value",sn=>{S.act=sn.val()||{};draw()});
 });
 function nav(){$("tabs").innerHTML=Object.keys(TABS).map(k=>`<button data-t="${k}" class="${k===tab?"on":""}">${TABS[k]}</button>`).join("")}
@@ -86,8 +95,27 @@ $("tabs").onclick=e=>{const b=e.target.closest("[data-t]");if(b){tab=b.dataset.t
 function draw(){
   if(document.activeElement&&/INPUT|SELECT/.test(document.activeElement.tagName)&&document.activeElement.closest("#view")&&tab!=="report")return;
   $("biz").textContent=S.set.business||"Shop admin";nav();
-  $("view").innerHTML=({menu:vMenu,stock:vStock,report:vReport,act:vAct,set:vSet})[tab]();
+  const nameCard=localStorage.getItem("who")?"":`<div class="card noprint"><h2>What is your first name?</h2><p>It is saved with every change you make.</p><div class="row"><div><label for="yn2">First name</label><input id="yn2"></div><div style="flex:0 0 auto;min-width:0"><button class="b" id="namesave">Save</button></div></div></div>`;
+  $("view").innerHTML=nameCard+({menu:vMenu,stock:vStock,report:vReport,act:vAct,set:vSet})[tab]();
 }
+// ---------- GIVE AWAY OR WASTE A DISH ----------
+let gv={dish:"",n:"1",why:"Staff meal"},lastGive=null,inl=null;
+const inlineForm=(id,s)=>inl.t==="grp"
+  ?`<div class="rs"><div class="row"><div><label for="ge">Group for ${esc(s.name)} (leave empty for none)</label><input id="ge" list="sgl" value="${esc(s.grp||"")}" placeholder="Bread, Meat, Drinks"></div><div style="flex:0 0 auto;min-width:0"><button class="b" data-a="grpsave" data-id="${id}">Save</button> <button class="g" data-a="inlcancel">Cancel</button></div></div></div>`
+  :`<div class="rs"><div class="row"><div><label for="fe">Count right now for ${esc(s.name)}</label><input id="fe" type="number" min="0" step="any" value="${esc(s.qty||0)}"></div><div style="flex:0 0 auto;min-width:0"><button class="b" data-a="fixsave" data-id="${id}">Save</button> <button class="g" data-a="inlcancel">Cancel</button></div></div></div>`;
+const GIVE_WHY=["Staff meal","Free gift or promo","Customer complaint","Dropped or spoiled","Other"];
+function giveLines(){const d=S.menu[gv.dish],n=parseFloat(gv.n)||0;if(!d||!d.uses||n<=0)return[];return Object.entries(d.uses).map(([k,q])=>({k,s:S.stock[k],need:r2(q*n)})).filter(x=>x.s&&x.s.name)}
+function givePv(){const d=S.menu[gv.dish];if(!d)return "";if(!d.uses)return `<span class="low">No stock items linked to this dish. Edit it on the Menu tab first.</span>`;
+  const L=giveLines();if(!L.length)return "";
+  return "This will take off: "+L.map(x=>{const short=(x.s.qty||0)<x.need;return `<span class="${short?"low":""}">${x.need} ${esc(x.s.unit||"")} ${esc(x.s.name)}${short?" (only "+r2(x.s.qty||0)+" left)":""}</span>`}).join(", ")}
+function giveCard(){
+  const items=Object.entries(S.menu).filter(([k,d])=>d&&d.active!==false).sort((a,b)=>a[1].name.localeCompare(b[1].name));
+  return `<div class="card"><h2>Give away or waste a dish</h2><div class="row">
+  <div><label for="gd">Dish</label><select id="gd"><option value="">Pick a dish</option>${items.map(([k,d])=>`<option value="${k}"${k===gv.dish?" selected":""}${d.uses?"":" disabled"}>${esc(d.name)}${d.uses?"":" (no stock items linked)"}</option>`).join("")}</select></div>
+  <div><label for="gn">How many</label><input id="gn" type="number" min="1" step="1" value="${esc(gv.n)}"></div>
+  <div><label for="gr">Reason</label><select id="gr">${GIVE_WHY.map(w=>`<option${w===gv.why?" selected":""}>${w}</option>`).join("")}</select></div></div>
+  <div class="pv" id="gpv" style="color:var(--ink)">${givePv()}</div>
+  <p><button class="b" id="gsave">Take off stock</button> ${lastGive&&Date.now()-lastGive.ts<120000?`<button class="g" id="gundo">Undo: ${esc(lastGive.n)} ${esc(lastGive.name)}</button>`:""}</p></div>`}
 const stockGroups=()=>[...new Set(Object.values(S.stock).filter(s=>s&&s.name&&s.grp).map(s=>s.grp))].sort((a,b)=>a.localeCompare(b));
 const stockList=()=>Object.entries(S.stock).filter(([k,s])=>s&&s.name);
 const stockOpts=sel=>`<option value="">Not tracked</option>`+stockList().sort((a,b)=>((a[1].grp||"~")+a[1].name).localeCompare((b[1].grp||"~")+b[1].name)).map(([k,s])=>`<option value="${k}"${k===sel?" selected":""}>${s.grp?esc(s.grp)+" - ":""}${esc(s.name)}</option>`).join("");
@@ -127,7 +155,7 @@ function vMenu(){
 // ---------- STOCK ----------
 function vStock(){
   const rows=stockList().sort((a,b)=>a[1].name.localeCompare(b[1].name));
-  let h=lowBanner()+`<div class="card"><h2>Add a stock item</h2><div class="row"><div><label for="sn">Name</label><input id="sn" placeholder="Burger buns"></div>
+  let h=lowBanner()+giveCard()+`<div class="card"><h2>Add a stock item</h2><div class="row"><div><label for="sn">Name</label><input id="sn" placeholder="Burger buns"></div>
   <div><label for="su">Unit</label><input id="su" value="pcs"></div><div><label for="sl">Warn me at</label><input id="sl" type="number" min="0" value="10"></div>
   <div><label for="sg">Group</label><input id="sg" list="sgl" placeholder="Bread, Meat, Drinks"><datalist id="sgl">${stockGroups().map(g=>`<option>${esc(g)}`).join("")}</datalist></div></div>
   <div class="row"><div><label for="sq">Count now</label><input id="sq" type="number" min="0" value="0"></div>
@@ -138,6 +166,7 @@ function vStock(){
   const cardHtml=([id,s])=>{const low=(s.qty||0)<=(s.low||0);return `<div class="item"><div class="n"><b>${esc(s.name)}</b><small>${low?`<span class="low">Running low</span> · `:""}warns at ${s.low||0} ${esc(s.unit)}${s.cost?" · last cost "+R(s.cost)+" each":""}</small></div>
   <div class="big ${low?"low":""}">${Math.round((s.qty||0)*100)/100}</div>
   <button class="g" data-a="fix" data-id="${id}">Fix count</button><button class="g" data-a="grp" data-id="${id}">Group</button><button class="r" data-a="sdel" data-id="${id}">Delete</button>
+  ${inl&&inl.k===id?inlineForm(id,s):""}
   <div class="rs"><b>Restock</b><div class="row">
     <div><label for="rb-${id}">How many boxes</label><input id="rb-${id}" data-pv="${id}" type="number" min="0" step="any" placeholder="0"></div>
     <div><label for="ri-${id}">How many in each box</label><input id="ri-${id}" data-pv="${id}" type="number" min="0" step="any" value="1"></div>
@@ -151,33 +180,59 @@ function vStock(){
   return h;
 }
 // ---------- REPORT ----------
+let rmode="month";
+const utcDay=d=>new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+function isoWeekOf(d){d=new Date(d);d.setUTCDate(d.getUTCDate()+4-(d.getUTCDay()||7));const y0=new Date(Date.UTC(d.getUTCFullYear(),0,1));return d.getUTCFullYear()+"-W"+String(Math.ceil(((d-y0)/864e5+1)/7)).padStart(2,"0")}
+function weekRange(w){const m=/^(\d{4})-W(\d{2})$/.exec(w||"");if(!m)return null;const j=new Date(Date.UTC(+m[1],0,4)),mon=new Date(j);mon.setUTCDate(j.getUTCDate()-((j.getUTCDay()+6)%7)+(+m[2]-1)*7);const sun=new Date(mon);sun.setUTCDate(mon.getUTCDate()+6);return[mon,sun]}
+let week=isoWeekOf(utcDay(new Date()));
+const dstr=d=>d.toISOString().slice(0,10);
+const dnice=d=>d.toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"});
+function printReport(){const old=document.title;document.title=($("biz").textContent||"Shop")+" "+(rmode==="week"?"weekly report "+week:"monthly report "+month);window.print();setTimeout(()=>{document.title=old},1500)}
 function vReport(){
-  const inM=k=>k.startsWith(month);
-  const sales=Object.entries(S.daily).filter(([k])=>inM(k)).reduce((s,[,d])=>s+(d.sales||0),0);
-  const orders=Object.entries(S.daily).filter(([k])=>inM(k)).reduce((s,[,d])=>s+(d.orders||0),0);
-  const pur=Object.values(S.purch).filter(p=>new Date(p.ts).toISOString().slice(0,7)===month).sort((a,b)=>b.ts-a.ts);
+  const todayS=new Date().toISOString().slice(0,10);
+  let inD,inTs,label,noun,pick,cur;
+  if(rmode==="week"){
+    const r=weekRange(week)||weekRange(isoWeekOf(utcDay(new Date()))),a=dstr(r[0]),b=dstr(r[1]);
+    inD=k=>k>=a&&k<=b;inTs=ts=>{const x=new Date(ts).toISOString().slice(0,10);return x>=a&&x<=b};
+    label="Week "+week.split("-W")[1]+": "+dnice(r[0])+" to "+dnice(r[1]);noun="this week";cur=todayS>=a&&todayS<=b;
+    pick=`<div class="row"><div><label for="wk">Week</label><input id="wk" type="week" value="${week}"></div><div style="flex:0 0 auto;min-width:0"><button class="g" data-a="wprev">&larr; Previous</button> <button class="g" data-a="wnow">This week</button> <button class="g" data-a="wnext">Next &rarr;</button></div></div>`;
+  }else{
+    inD=k=>k.startsWith(month);inTs=ts=>new Date(ts).toISOString().slice(0,7)===month;
+    const [y,m]=month.split("-");label=new Date(Date.UTC(+y,+m-1,1)).toLocaleDateString(undefined,{month:"long",year:"numeric",timeZone:"UTC"});noun="this month";cur=month===todayS.slice(0,7);
+    pick=`<label for="mo">Month</label><input id="mo" type="month" value="${month}" style="max-width:200px">`;
+  }
+  const sales=Object.entries(S.daily).filter(([k])=>inD(k)).reduce((s,[,d])=>s+(d.sales||0),0);
+  const orders=Object.entries(S.daily).filter(([k])=>inD(k)).reduce((s,[,d])=>s+(d.orders||0),0);
+  const pur=Object.values(S.purch).filter(p=>p&&p.ts&&inTs(p.ts)).sort((a,b)=>b.ts-a.ts);
   const spent=pur.reduce((s,p)=>s+(p.cost||0),0),left=Object.values(S.stock).reduce((s,x)=>s+(x.qty||0)*(x.cost||0),0);
-  const cur=month===new Date().toISOString().slice(0,7);
-  return `<div class="card"><label for="mo">Month</label><input id="mo" type="month" value="${month}" style="max-width:200px">
-  <div class="stats" style="margin-top:12px"><div><span>Sales</span><div class="big">${R(sales)}</div></div><div><span>Stock bought</span><div class="big">${R(spent)}</div></div>
-  <div><span>Profit</span><div class="big ${sales-spent<0?"low":""}">${R(sales-spent)}</div></div><div><span>Orders</span><div class="big">${orders}</div></div></div>
-  ${sales?`<p>Margin on sales: <b>${Math.round((sales-spent)/sales*100)}%</b></p>`:""}
-  ${cur?`<p>Stock still on the shelf is worth about <b>${R(left)}</b>, so profit after counting what is left is about <b>${R(sales-spent+left)}</b>.</p>`:""}</div>
-  <div class="card"><h2>Stock bought this month</h2>${pur.length?pur.map(p=>`<div class="item"><div class="n"><b>${esc(p.name)}</b> × ${p.qty}<small>${new Date(p.ts).toLocaleDateString()} · ${esc(p.who)}</small></div><b>${R(p.cost)}</b></div>`).join(""):`<div class="empty">Nothing bought yet. Use Restock on the Stock tab.</div>`}</div>`;
+  const gl=Object.values(S.give).filter(g=>g&&g.ts&&inTs(g.ts)),lost=r2(gl.reduce((t,g)=>t+(g.cost||0),0)),byWhy={};
+  gl.forEach(g=>{const w=g.why||"Other";byWhy[w]=byWhy[w]||{c:0,n:0};byWhy[w].c+=g.cost||0;byWhy[w].n++});
+  return `<div class="card noprint"><div class="row"><div><label for="rm">Report type</label><select id="rm"><option value="month"${rmode==="month"?" selected":""}>Monthly report</option><option value="week"${rmode==="week"?" selected":""}>Weekly report</option></select></div><div style="flex:0 0 auto;min-width:0"><button class="b" id="pdf">Download PDF</button></div></div>${pick}</div>
+  <div class="printonly"><h1 style="font-size:22px;margin:0 0 4px">${esc(S.set.business||"Shop")}: ${rmode==="week"?"weekly":"monthly"} report</h1><p style="margin:0 0 8px">${esc(label)} &middot; made on ${new Date().toLocaleDateString()} by ${esc(who())}</p></div>
+  <div class="card"><h2>${esc(label)}</h2>
+  <div class="stats"><div><span>Sales</span><div class="big">${R(sales)}</div></div><div><span>Stock bought</span><div class="big">${R(spent)}</div></div>
+  <div><span>Sales minus stock bought</span><div class="big ${sales-spent<0?"low":""}">${R(sales-spent)}</div></div><div><span>Profit after leftover stock (estimate)</span><div class="big ${sales-spent+left<0?"low":""}">${R(sales-spent+left)}</div></div><div><span>Stock lost or given away</span><div class="big ${lost>0?"low":""}">${R(lost)}</div></div><div><span>Orders</span><div class="big">${orders}</div></div></div>
+  ${sales?`<p>Margin on sales: <b>${Math.round((sales-spent+left)/sales*100)}%</b> after leftover stock</p>`:""}
+  <p style="color:var(--mute);font-size:14px">Sales minus stock bought can look like a loss in a ${rmode==="week"?"week":"month"} when you restock heavily. Stock still on the shelf is worth about <b>${R(left)}</b> at today's counts and last costs, so the second figure is a fairer picture of profit. ${cur?"":"For past periods it is only an estimate, because it uses today's shelf value."}</p></div>
+  <div class="card"><h2>Stock lost or given away ${noun}</h2>${gl.length?Object.entries(byWhy).sort((a,b)=>b[1].c-a[1].c).map(([w,x])=>`<div class="item"><div class="n"><b>${esc(w)}</b><small>${x.n} time${x.n===1?"":"s"}</small></div><b>${R(x.c)}</b></div>`).join("")+`<div class="item"><div class="n"><b>Total</b></div><b>${R(lost)}</b></div>`:`<div class="empty">Nothing given away or wasted ${noun}.</div>`}</div>
+  <div class="card"><h2>Stock bought ${noun}</h2>${pur.length?pur.map(p=>`<div class="item"><div class="n"><b>${esc(p.name)}</b> × ${p.qty}<small>${new Date(p.ts).toLocaleDateString()} · ${esc(p.who)}</small></div><b>${R(p.cost)}</b></div>`).join(""):`<div class="empty">Nothing bought ${noun}. Use Restock on the Stock tab.</div>`}</div>`;
 }
 // ---------- ACTIVITY ----------
 function vAct(){
   const a=Object.values(S.act).sort((x,y)=>y.ts-x.ts),names=[...new Set(a.map(x=>x.who))];
   const f=who_f?a.filter(x=>x.who===who_f):a;
-  return `<div class="card"><label for="wf">Show changes by</label><select id="wf" style="max-width:240px"><option value="">Everyone</option>${names.map(n=>`<option${n===who_f?" selected":""}>${esc(n)}</option>`).join("")}</select></div>
+  return `<div class="card noprint"><p style="margin:0 0 8px">Activity older than ten days can be cleared to keep the database small. A line saying who cleared it is kept.</p><button class="r" id="actclear">Clear activity older than ten days</button></div>
+  <div class="card"><label for="wf">Show changes by</label><select id="wf" style="max-width:240px"><option value="">Everyone</option>${names.map(n=>`<option${n===who_f?" selected":""}>${esc(n)}</option>`).join("")}</select></div>
   <div class="card">${f.length?f.map(x=>`<div class="item"><div class="n"><b>${esc(x.who)}</b> ${esc(x.what)}<small>${new Date(x.ts).toLocaleString()}</small></div></div>`).join(""):`<div class="empty">No changes recorded yet.</div>`}</div>`;
 }
 // ---------- SETTINGS ----------
 function vSet(){return `<div class="card"><h2>Settings</h2><label for="yn">Your name (saved with each change)</label><input id="yn" value="${esc(localStorage.getItem("who")||"")}">
   <label for="bn">Business name</label><input id="bn" value="${esc(S.set.business||"")}"><p><button class="b" id="setsave">Save settings</button></p>
   <p><button class="g" id="so">Sign out</button></p></div>
-  <div class="card"><h2>Reset stock and sales</h2><p>Clears stock counts, purchases, daily sales and the Activity list, so you can start fresh. Your menu stays, but dishes are unlinked from stock.</p>
-  <button class="r" id="resetall">Reset stock and sales</button></div>`}
+  <details class="card warnbox"><summary style="cursor:pointer;color:var(--bad);font-weight:700">Danger zone</summary>
+  <h2 style="margin-top:12px">Reset stock and sales</h2><p>Clears stock counts, purchases, daily sales and give-away records, so you can start fresh. Your menu and the Activity list stay, and the reset itself is written to Activity. Dishes are unlinked from stock. This cannot be undone.</p>
+  <label for="rt">Type RESET to unlock the button</label><input id="rt" autocomplete="off" style="max-width:200px">
+  <p><button class="r" id="resetall">Reset stock and sales</button></p></details>`}
 // ---------- LIVE FORM STATE ----------
 const num=id=>{const e=$(id);return e?(parseFloat(e.value)||0):0};
 const r2=n=>Math.round(n*100)/100;
@@ -188,6 +243,7 @@ document.addEventListener("input",e=>{
     el.textContent=b>0?"That adds "+r2(b*n)+(p>0?" and costs "+R(r2(p/n))+" each":""):"";
     return;
   }
+  if(t.id==="gn"){gv.n=t.value;$("gpv").innerHTML=givePv();return}
   if(!draft)return;
   if(t.id==="mn")draft.name=t.value;
   if(t.id==="mp")draft.price=t.value;
@@ -223,8 +279,12 @@ document.addEventListener("click",async e=>{
     log("added stock item "+name+(qty?" ("+qty+")":"")+(paid>0?" for "+R(paid):""));
     toast("Added "+name+(qty?" ("+qty+")":""));
     ["sn","sq","sp","sg"].forEach(i=>{if($(i))$(i).value=i==="sq"?"0":""})}
-  if(a==="grp"){const s=S.stock[k],v=prompt("Group for "+s.name+"? (for example Bread, Meat, Drinks. Leave empty for none)",s.grp||"");if(v===null)return;
-    await db.ref("stock/"+k+"/grp").set(v.trim()||null);log("put "+s.name+" in group "+(v.trim()||"none"));toast(s.name+" is now in "+(v.trim()||"no group"))}
+  if(a==="grp"||a==="fix"){inl={k,t:a};draw();setTimeout(()=>{const e=$(a==="grp"?"ge":"fe");if(e)e.focus()},30)}
+  if(a==="inlcancel"){inl=null;draw()}
+  if(a==="grpsave"){const s=S.stock[k],v=$("ge").value.trim();inl=null;
+    await db.ref("stock/"+k+"/grp").set(v||null);log("put "+s.name+" in group "+(v||"none"));toast(s.name+" is now in "+(v||"no group"));draw()}
+  if(a==="fixsave"){const s=S.stock[k],v=parseFloat($("fe").value);if(isNaN(v)||v<0){toast("Type a number, zero or more.",true);return}inl=null;
+    await db.ref("stock/"+k+"/qty").set(v);log("fixed count of "+s.name+" from "+s.qty+" to "+v);toast("Count for "+s.name+" is now "+v);draw()}
   if(a==="restock"){
     const boxes=num("rb-"+k),per=num("ri-"+k)||1,price=num("rp-"+k),q=r2(boxes*per),cost=r2(boxes*price),s=S.stock[k];
     if(boxes<=0){toast("Enter how many boxes you bought.",true);return}
@@ -235,8 +295,10 @@ document.addEventListener("click",async e=>{
   if(a==="waste"){
     const q=num("wq-"+k),why=$("wr-"+k).value,s=S.stock[k];
     if(q<=0){toast("Enter how many to take off.",true);return}
+    const cost=r2(Math.min(q,s.qty||0)*(s.cost||0));
     await db.ref("stock/"+k+"/qty").transaction(n=>Math.max(0,(n||0)-q));
-    log("took off "+q+" "+s.name+" ("+why+")");toast("Took off "+q+" "+s.name+" ("+why+")")}
+    await db.ref("giveaways").push({dish:s.name,qty:q,why,cost,who:who(),ts:firebase.database.ServerValue.TIMESTAMP});
+    log("took off "+q+" "+s.name+" ("+why+")"+(cost?", cost "+R(cost):""));toast("Took off "+q+" "+s.name+" ("+why+")")}
   if(a==="fix"){const v=prompt("Count right now for "+S.stock[k].name+"?",S.stock[k].qty);if(v===null||isNaN(parseFloat(v)))return;
     await db.ref("stock/"+k+"/qty").set(parseFloat(v));log("fixed count of "+S.stock[k].name+" from "+S.stock[k].qty+" to "+parseFloat(v));toast("Count for "+S.stock[k].name+" is now "+parseFloat(v))}
   if(a==="sdel"){
@@ -244,17 +306,48 @@ document.addEventListener("click",async e=>{
     if(linked.length){alert("You can't delete "+s.name+" yet. These dishes still count it down:\n\n"+linked.join("\n")+"\n\nGo to the Menu tab, edit each dish and remove "+s.name+" from its stock items. Then delete it here.");return}
     if(!confirm("Delete "+s.name+" from stock? This cannot be undone."))return;
     await db.ref("stock/"+k).remove();log("deleted stock item "+s.name);toast("Deleted "+s.name)}
+  if(id==="pdf"){printReport()}
+  if(a==="wprev"||a==="wnext"){const r=weekRange(week);r[0].setUTCDate(r[0].getUTCDate()+(a==="wnext"?7:-7));week=isoWeekOf(r[0]);draw()}
+  if(a==="wnow"){week=isoWeekOf(utcDay(new Date()));draw()}
+  if(id==="actclear"){
+    const cutoff=Date.now()-10*864e5,sn=await db.ref("activity").orderByChild("ts").endAt(cutoff).once("value"),old=sn.val()||{},keys=Object.keys(old);
+    if(!keys.length){toast("Nothing older than ten days to clear.");return}
+    if(!confirm("Delete "+keys.length+" activity line"+(keys.length===1?"":"s")+" older than ten days?\n\nThis cannot be undone."))return;
+    const up={};keys.forEach(x=>{up[x]=null});await db.ref("activity").update(up);
+    await log("cleared "+keys.length+" activity lines older than ten days");toast("Cleared "+keys.length+" old line"+(keys.length===1?"":"s"))}
+  if(id==="namesave"){const n=$("yn2").value.trim();if(!n){toast("Type your first name.",true);return}localStorage.setItem("who",n);toast("Saved");draw()}
   if(id==="setsave"){localStorage.setItem("who",$("yn").value.trim()||"Unknown");await db.ref("settings/business").set($("bn").value.trim()||null);toast("Saved")}
   if(id==="resetall"){
-    if(!confirm("Reset stock and sales?\n\nThis clears stock counts, purchases, daily sales and the Activity list. Your menu stays. This cannot be undone."))return;
-    const up={stock:null,purchases:null,daily:null,activity:null};
+    if(($("rt").value||"").trim()!=="RESET"){toast("Type the word RESET first.",true);return}
+    const up={stock:null,purchases:null,daily:null,giveaways:null};
     Object.entries(S.menu).forEach(([mk,d])=>{if(d&&d.uses)up["menu/"+mk+"/uses"]=null});
     await db.ref().update(up);
-    await log("reset stock and sales");toast("Reset done")}
+    await log("reset stock and sales");toast("Reset done");$("rt").value=""}
+  if(id==="gsave"){
+    const d=S.menu[gv.dish],n=parseFloat(gv.n)||0;
+    if(!d||!d.uses){toast("Pick a dish that has stock items linked.",true);return}
+    if(n<=0){toast("Enter how many.",true);return}
+    const L=giveLines(),short=L.filter(x=>(x.s.qty||0)<x.need);
+    if(short.length&&!confirm("Not enough stock for: "+short.map(x=>x.s.name).join(", ")+".\n\nTake off anyway? Counts stop at zero."))return;
+    const cost=r2(L.reduce((t,x)=>t+x.need*(x.s.cost||0),0)),taken=L.map(x=>({k:x.k,q:Math.min(x.s.qty||0,x.need)}));
+    await Promise.all(L.map(x=>db.ref("stock/"+x.k+"/qty").transaction(v=>Math.max(0,(v||0)-x.need))));
+    const rec=db.ref("giveaways").push({dish:d.name,dishId:gv.dish,qty:n,why:gv.why,cost,who:who(),ts:firebase.database.ServerValue.TIMESTAMP});await rec;
+    log("took off stock for "+n+" "+d.name+" ("+gv.why+")"+(cost?", cost "+R(cost):""));
+    lastGive={key:rec.key,taken,name:d.name,n,ts:Date.now()};gv.n="1";
+    toast("Took off stock for "+n+" "+d.name+" ("+gv.why+")");draw()}
+  if(id==="gundo"){
+    if(!lastGive||Date.now()-lastGive.ts>120000){lastGive=null;toast("Too late to undo.",true);draw();return}
+    const g=lastGive;await Promise.all(g.taken.map(x=>db.ref("stock/"+x.k+"/qty").transaction(v=>(v||0)+x.q)));
+    await db.ref("giveaways/"+g.key).remove();log("undid the give-away of "+g.n+" "+g.name);lastGive=null;toast("Put the stock back");draw()}
   if(id==="so")firebase.auth().signOut().then(()=>location.reload());
   }catch(err){toast("That did not work: "+err.message,true)}
 });
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&(e.target.id==="ge"||e.target.id==="fe")){const b=document.querySelector('[data-a="grpsave"],[data-a="fixsave"]');if(b)b.click()}});
 document.addEventListener("change",e=>{
+  if(e.target.id==="gd"){gv.dish=e.target.value;$("gpv").innerHTML=givePv()}
+  if(e.target.id==="gr")gv.why=e.target.value;
+  if(e.target.id==="rm"){rmode=e.target.value;draw()}
+  if(e.target.id==="wk"&&weekRange(e.target.value)){week=e.target.value;draw()}
   if(e.target.id==="mo"){month=e.target.value||month;draw()}
   if(e.target.id==="wf"){who_f=e.target.value;draw()}
   if(e.target.classList.contains("us")&&draft)draft.uses[+e.target.dataset.i].s=e.target.value;
